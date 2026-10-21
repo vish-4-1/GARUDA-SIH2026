@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: garuda-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-garuda}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-garudapass}
+      POSTGRES_DB: ${POSTGRES_DB:-garudadb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - garuda_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U garuda -d garudadb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: garuda-backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-garuda}:${POSTGRES_PASSWORD:-garudapass}@db:5432/${POSTGRES_DB:-garudadb}
+      ENVIRONMENT: production
+      DEBUG: "false"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: garuda-frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  garuda_pg_data:

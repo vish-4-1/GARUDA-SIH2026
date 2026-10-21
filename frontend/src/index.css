@@ -1,0 +1,151 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* GARUDA Core Glassmorphism Color System */
+  --bg-primary: #050505;          /* JET BLACK */
+  --bg-secondary: #0D0B12;        /* Secondary Dark Background */
+  --surface-elevated: #15121C;    /* Elevated Surface */
+  --amethyst: #3B0A6B;            /* ROYAL AMETHYST */
+  --amethyst-surface: #241039;    /* Amethyst Surface */
+  --amethyst-glass: rgba(59, 10, 107, 0.22);
+  --cyan: #00E5FF;                /* ELECTRIC CYAN */
+  --cyan-highlight: rgba(0, 229, 255, 0.14);
+  --glass-panel: rgba(255, 255, 255, 0.045);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --text-primary: #F7F5FA;
+  --text-secondary: #AAA3B5;
+  --divider: rgba(255, 255, 255, 0.10);
+}
+
+@layer base {
+  body {
+    background-color: #050505;
+    color: #F7F5FA;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    selection-background-color: rgba(0, 229, 255, 0.25);
+    selection-color: #00E5FF;
+  }
+}
+
+/* Glassmorphism Reusable Classes with Fallback */
+.glass-panel {
+  background: rgba(13, 11, 18, 0.85); /* Fallback */
+  background: rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.55);
+}
+
+.glass-card {
+  background: rgba(13, 11, 18, 0.82); /* Fallback */
+  background: rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.glass-card-amethyst {
+  background: rgba(36, 16, 57, 0.75); /* Fallback */
+  background: rgba(59, 10, 107, 0.22);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(59, 10, 107, 0.45);
+  border-radius: 16px;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.55), 0 0 15px rgba(59, 10, 107, 0.20);
+}
+
+.glass-card-elevated {
+  background: rgba(21, 18, 28, 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65);
+}
+
+.glass-card-subtle {
+  background: rgba(13, 11, 18, 0.70);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+}
+
+.glass-card-interactive {
+  background: rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 16px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card-interactive:hover {
+  border-color: rgba(0, 229, 255, 0.35);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.12), 0 4px 20px rgba(0, 0, 0, 0.6);
+  transform: translateY(-1px);
+}
+
+/* Electric Cyan Illumination & Accents */
+.glow-cyan-sm {
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
+}
+
+.glow-cyan-md {
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.40);
+}
+
+.glow-amethyst-sm {
+  box-shadow: 0 0 16px rgba(59, 10, 107, 0.45);
+}
+
+.glow-amethyst-md {
+  box-shadow: 0 0 28px rgba(59, 10, 107, 0.65);
+}
+
+/* Custom Sleek Dark Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #15121C;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3B0A6B;
+  border-color: #00E5FF;
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+}
+
+@keyframes pulse-cyan {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-cyan {
+  animation: pulse-cyan 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

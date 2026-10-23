@@ -1,7 +1,7 @@
 # GARUDA — AI-Enabled Drone & Counter-Drone Threat Simulation Trainer
 
 <p align="center">
-  <img src="frontend/public/garuda-eagle.svg" alt="GARUDA Eagle Emblem" width="100" height="100" />
+  <img src="frontend/public/garuda-logo.png" alt="GARUDA Logo" width="300" />
 </p>
 
 [![Status](https://img.shields.io/badge/Status-Operational-00CFE8?style=for-the-badge)](#)

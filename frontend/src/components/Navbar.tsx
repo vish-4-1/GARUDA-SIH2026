@@ -94,16 +94,15 @@ export const Navbar: React.FC<NavbarProps> = () => {
         {/* Brand Identity & Tactical Breadcrumb */}
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2.5 group shrink-0">
-            <GarudaEagleLogo className="w-7 h-7 shrink-0 text-slate-800 dark:text-[#F4F5F7] transition-transform duration-150 group-hover:scale-105" />
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-sm sm:text-base tracking-widest text-slate-900 dark:text-[#F4F5F7] font-mono select-none">
-                GARUDA
-              </span>
-              <span className="hidden md:inline-block h-3.5 w-px bg-slate-300 dark:bg-white/[0.16]" />
-              <span className="text-[9.5px] text-[#0284C7] dark:text-[#00CFE8] font-mono tracking-widest uppercase hidden md:inline-block select-none font-bold">
-                TACTICAL C2 RIG
-              </span>
-            </div>
+            <img
+              src="/garuda-logo.png"
+              alt="GARUDA"
+              className="h-7 w-auto object-contain transition-transform duration-150 group-hover:scale-105"
+            />
+            <span className="hidden md:inline-block h-3.5 w-px bg-slate-300 dark:bg-white/[0.16]" />
+            <span className="text-[9.5px] text-[#0284C7] dark:text-[#00CFE8] font-mono tracking-widest uppercase hidden md:inline-block select-none font-bold">
+              TACTICAL C2 RIG
+            </span>
           </Link>
 
           {/* Airspace Threat Level Pill */}

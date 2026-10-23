@@ -13,23 +13,15 @@
 
 ---
 
-## Visual Demo Showcase (Live Telemetry & Dual Theme UI)
+## Visual Demo Showcase
 
-### 🌓 Dual-Theme Tactical C2 Interface (Dark & Daylight White)
-
-| Command Center (Tactical Dark Mode) | Command Center (Crisp White Theme) |
-| :---: | :---: |
-| ![Command Center Dark](docs/screenshots/command_center_dark.png) | ![Command Center Light](docs/screenshots/command_center.png) |
-
-| Scenario Library (Dark Mode) | 3D Simulation Workspace (Dark Mode) |
-| :---: | :---: |
-| ![Scenario Library Dark](docs/screenshots/scenario_library_dark.png) | ![3D Simulation Workspace Dark](docs/screenshots/simulation_workspace_dark.png) |
-
-### 🛰️ Live Telemetry & 3D Sensor Pipelines
-
-| Live Telemetry Pipeline Monitor | 3D Interactive Simulation Workspace (Light) |
+| Live Telemetry Pipeline Monitor | 3D Interactive Simulation Workspace |
 | :---: | :---: |
 | ![Live Telemetry Pipeline](docs/screenshots/telemetry_pipeline_live.png) | ![3D Simulation Workspace](docs/screenshots/simulation_3d_workspace.png) |
+
+| Command Center | Scenario Library |
+| :---: | :---: |
+| ![Command Center](docs/screenshots/command_center.png) | ![Scenario Library](docs/screenshots/scenario_library.png) |
 
 ---
 

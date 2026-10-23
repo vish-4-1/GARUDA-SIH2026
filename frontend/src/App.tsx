@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import { Layout } from './components/Layout';
 import { CommandCenter } from './pages/CommandCenter';
 import { ScenarioLibrary } from './pages/ScenarioLibrary';
@@ -15,24 +16,27 @@ import { SystemHealth } from './pages/SystemHealth';
 
 export const App: React.FC = () => {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<CommandCenter />} />
-          <Route path="scenarios" element={<ScenarioLibrary />} />
-          <Route path="scenarios/builder" element={<ScenarioBuilder />} />
-          <Route path="simulation" element={<SimulationWorkspace />} />
-          <Route path="telemetry" element={<TelemetryMonitor />} />
-          <Route path="timeline" element={<EvidenceTimeline />} />
-          <Route path="scoring" element={<DecisionScoring />} />
-          <Route path="review" element={<AfterActionReview />} />
-          <Route path="training" element={<AdaptiveTraining />} />
-          <Route path="reports" element={<ReportsHistory />} />
-          <Route path="health" element={<SystemHealth />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<CommandCenter />} />
+            <Route path="scenarios" element={<ScenarioLibrary />} />
+            <Route path="scenarios/builder" element={<ScenarioBuilder />} />
+            <Route path="simulation" element={<SimulationWorkspace />} />
+            <Route path="simulation/:runId" element={<SimulationWorkspace />} />
+            <Route path="telemetry" element={<TelemetryMonitor />} />
+            <Route path="timeline" element={<EvidenceTimeline />} />
+            <Route path="scoring" element={<DecisionScoring />} />
+            <Route path="review" element={<AfterActionReview />} />
+            <Route path="training" element={<AdaptiveTraining />} />
+            <Route path="reports" element={<ReportsHistory />} />
+            <Route path="health" element={<SystemHealth />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 };
 

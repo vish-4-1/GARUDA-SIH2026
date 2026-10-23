@@ -1,12 +1,12 @@
-# GARUDA — SIH 2026 Evaluator Demonstration Script
+# GARUDA — End-to-End Operational Demonstration Script
 
-Follow this step-by-step walkthrough to demonstrate GARUDA's end-to-end functionality to Smart India Hackathon evaluators.
+Follow this step-by-step walkthrough to demonstrate GARUDA's end-to-end mission simulation, evidence evaluation, and adaptive training capabilities.
 
 ---
 
 ### Step 1: Open Command Center
 1. Navigate to `http://localhost:5173` (or port 3000 in Docker).
-2. Show the **Command Center Overview** with live KPIs, problem statement badge (`SIH26247`), and the **Core Innovation Callout** explaining the 3-Layer Evidence Architecture:
+2. Show the **Command Center Overview** with live KPIs, operational status indicators, and the **Core Innovation Callout** explaining the 3-Layer Evidence Architecture:
    - Ground Truth vs Delivered Observations vs Trainee Decisions.
 
 ---

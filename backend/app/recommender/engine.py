@@ -21,6 +21,8 @@ class AdaptiveRecommendationEngine:
         ).delete()
 
         metrics = run.summary_metrics
+        total_decisions = metrics.get("total_decisions")
+        observable_hostile = metrics.get("observable_hostile_count", 0)
         det_rate = metrics.get("detection_rate", 100.0)
         class_acc = metrics.get("classification_accuracy", 100.0)
         fa_rate = metrics.get("false_alarm_rate", 0.0)
@@ -28,6 +30,42 @@ class AdaptiveRecommendationEngine:
         unassessable = metrics.get("unassessable_count", 0)
 
         recommendations: List[TrainingRecommendation] = []
+
+        # Special Case: Zero decisions recorded (Provisional Recommendation)
+        if total_decisions is not None and total_decisions == 0:
+            rec = TrainingRecommendation(
+                id=str(uuid.uuid4()),
+                run_id=run.id,
+                target_skill="Foundational Threat Engagement & Classification",
+                gap_type="NO_DECISIONS_RECORDED",
+                priority="MEDIUM",
+                reason=(
+                    f"Provisional Recommendation: Zero trainee decisions or defensive actions were recorded across "
+                    f"{observable_hostile} observable threat ingress events. Baseline tactical engagement practice is recommended."
+                ),
+                recommended_difficulty="Beginner",
+                learning_objective="Exercise continuous radar/sensor monitoring, identify approaching contacts, classify threat signatures, and initiate defensive countermeasures.",
+                suggested_scenario_config={
+                    "name": "Drill: Baseline Ingress Intercept & Classification",
+                    "environment": "urban",
+                    "difficulty": "Beginner",
+                    "duration_seconds": 90,
+                    "seed": 101,
+                    "num_entities": 4,
+                    "sensor_reliability": 0.96,
+                    "observation_delay_mean": 1.0,
+                    "observation_delay_jitter": 0.2,
+                    "observation_loss_rate": 0.02,
+                    "noise_level": 0.08,
+                    "weather": "Clear Day",
+                },
+                is_launched=False,
+                created_at=datetime.utcnow()
+            )
+            recommendations.append(rec)
+            db.bulk_save_objects(recommendations)
+            db.commit()
+            return recommendations
 
         # Rule 1: High False Alarm Rate
         if fa_rate >= 15.0:

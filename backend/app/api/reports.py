@@ -26,7 +26,7 @@ def export_run_json(run_id: str, db: Session = Depends(get_db)):
     report = {
         "export_metadata": {
             "system": "GARUDA Threat Simulation Trainer",
-            "problem_statement": "SIH26247",
+            "framework": "Evidence-Aware Assessment Engine",
             "version": "1.0.0",
         },
         "run_summary": {

@@ -26,7 +26,7 @@ class PX4GazeboAdapter(BaseSimulatorAdapter):
             sock.close()
             # In local desktop dev without PX4 running, this will remain disconnected
             self._connected = False
-            self._diagnostics = f"No active PX4/Gazebo SITL daemon detected on {self.default_endpoint}. GARUDA internal 3D engine is active."
+            self._diagnostics = f"Standby: No active PX4/Gazebo SITL daemon detected on {self.default_endpoint}. GARUDA Internal 3D engine is active."
         except Exception as e:
             self._connected = False
             self._diagnostics = f"Connection probe failed: {str(e)}. Operating in synthetic internal mode."

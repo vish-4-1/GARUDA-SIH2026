@@ -14,6 +14,26 @@ import {
 
 const BASE_URL = '/api';
 
+function sanitizeBrandingText(obj: any): any {
+  if (typeof obj === 'string') {
+    return obj
+      .replace(/\bSmart India Hackathon\b/gi, 'Counter-UAS Rig')
+      .replace(/\bSIH\b/g, 'GARUDA')
+      .replace(/\bDareDevils?\b/gi, 'Simulation Rig');
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeBrandingText);
+  }
+  if (obj !== null && typeof obj === 'object') {
+    const res: any = {};
+    for (const key of Object.keys(obj)) {
+      res[key] = sanitizeBrandingText(obj[key]);
+    }
+    return res;
+  }
+  return obj;
+}
+
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let errorDetail = 'API request failed';
@@ -25,7 +45,8 @@ async function handleResponse<T>(res: Response): Promise<T> {
     }
     throw new Error(errorDetail);
   }
-  return res.json();
+  const data = await res.json();
+  return sanitizeBrandingText(data) as T;
 }
 
 export const api = {
@@ -70,6 +91,23 @@ export const api = {
   duplicateScenario: async (id: string): Promise<Scenario> => {
     const res = await fetch(`${BASE_URL}/scenarios/${id}/duplicate`, {
       method: 'POST',
+    });
+    return handleResponse<Scenario>(res);
+  },
+
+  updateScenario: async (id: string, data: {
+    name?: string;
+    description?: string;
+    environment?: string;
+    difficulty?: string;
+    duration_seconds?: number;
+    seed?: number;
+    configuration?: Partial<ScenarioConfiguration>;
+  }): Promise<Scenario> => {
+    const res = await fetch(`${BASE_URL}/scenarios/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
     return handleResponse<Scenario>(res);
   },
@@ -169,10 +207,32 @@ export const api = {
     return handleResponse<Observation[]>(res);
   },
 
-  getTimeline: async (runId: string, filterType?: string): Promise<{ run_id: string; current_sim_time: number; total_items: number; timeline: TimelineNode[] }> => {
-    const filterParam = filterType && filterType !== 'all' ? `?filter_type=${filterType}` : '';
-    const res = await fetch(`${BASE_URL}/runs/${runId}/timeline${filterParam}`);
-    return handleResponse<{ run_id: string; current_sim_time: number; total_items: number; timeline: TimelineNode[] }>(res);
+  getTimeline: async (
+    runId: string,
+    filterType?: string,
+    role: 'evaluator' | 'trainee' = 'evaluator'
+  ): Promise<{
+    run_id: string;
+    current_sim_time: number;
+    total_items: number;
+    counts?: {
+      all: number;
+      delivered: number;
+      delayed: number;
+      lost: number;
+      decisions: number;
+      ground_truth: number;
+    };
+    role?: string;
+    timeline: TimelineNode[];
+  }> => {
+    const params = new URLSearchParams();
+    if (filterType && filterType !== 'all') {
+      params.append('filter_type', filterType);
+    }
+    params.append('role', role);
+    const res = await fetch(`${BASE_URL}/runs/${runId}/timeline?${params.toString()}`);
+    return handleResponse(res);
   },
 
   // Evaluation & Review
@@ -226,7 +286,61 @@ export const api = {
     return handleResponse(res);
   },
 
-  // Export URLs
+  // Export URLs & Download Helpers
   getExportJsonUrl: (runId: string) => `${BASE_URL}/runs/${runId}/export.json`,
   getExportCsvUrl: (runId: string) => `${BASE_URL}/runs/${runId}/export.csv`,
+
+  downloadExportJson: async (runId: string): Promise<string> => {
+    const res = await fetch(`${BASE_URL}/runs/${runId}/export.json`);
+    if (!res.ok) throw new Error(`Export failed with status ${res.status}`);
+    const blob = await res.blob();
+    const disposition = res.headers.get('content-disposition');
+    let filename = `garuda_run_${runId.slice(0, 8)}_report.json`;
+    if (disposition && disposition.includes('filename=')) {
+      const match = disposition.match(/filename=(?:["']?)([^"';]+)/);
+      if (match && match[1]) filename = match[1];
+    }
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    return filename;
+  },
+
+  downloadExportCsv: async (runId: string): Promise<string> => {
+    const res = await fetch(`${BASE_URL}/runs/${runId}/export.csv`);
+    if (!res.ok) throw new Error(`Export failed with status ${res.status}`);
+    const blob = await res.blob();
+    const disposition = res.headers.get('content-disposition');
+    let filename = `garuda_run_${runId.slice(0, 8)}_audit.csv`;
+    if (disposition && disposition.includes('filename=')) {
+      const match = disposition.match(/filename=(?:["']?)([^"';]+)/);
+      if (match && match[1]) filename = match[1];
+    }
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    return filename;
+  },
+
+  // System Health & Infrastructure Diagnostics
+  getSystemHealth: async (): Promise<any> => {
+    const res = await fetch(`${BASE_URL}/telemetry/health/system`);
+    return handleResponse(res);
+  },
+
+  probeSystemHealth: async (): Promise<any> => {
+    const res = await fetch(`${BASE_URL}/telemetry/probe`, { method: 'POST' });
+    return handleResponse(res);
+  },
 };
+

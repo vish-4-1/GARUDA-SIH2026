@@ -4,12 +4,24 @@
   <img src="frontend/public/garuda-eagle.svg" alt="GARUDA Eagle Emblem" width="100" height="100" />
 </p>
 
-[![Smart India Hackathon 2026](https://img.shields.io/badge/SIH-2026-blue?style=for-the-badge)](https://sih.gov.in)
-[![Problem Statement ID](https://img.shields.io/badge/PS_ID-SIH26247-orange?style=for-the-badge)](https://sih.gov.in)
-[![Domain](https://img.shields.io/badge/Domain-Robotics_%26_Drones-red?style=for-the-badge)](https://sih.gov.in)
-[![Team](https://img.shields.io/badge/Team-DareDevils-purple?style=for-the-badge)](https://sih.gov.in)
+[![Status](https://img.shields.io/badge/Status-Operational-00CFE8?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/Release-v1.0.0-7047C8?style=for-the-badge)](#)
+[![Domain](https://img.shields.io/badge/Domain-Counter--UAS_Simulation-111318?style=for-the-badge)](#)
+[![Architecture](https://img.shields.io/badge/Architecture-Evidence--Aware-E9A23B?style=for-the-badge)](#)
 
-> **GARUDA** (*Generative AI for Realistic Unmanned-threat Detection and Assessment*) is an end-to-end mission simulation trainer that generates repeatable synthetic drone-threat scenarios, presents degraded sensor observations, evaluates trainee decisions fairly under incomplete information, and recommends targeted adaptive follow-up training.
+> **GARUDA** is an end-to-end mission simulation trainer that generates repeatable synthetic drone-threat scenarios, presents degraded sensor observations, evaluates trainee decisions fairly under incomplete information, and recommends targeted adaptive follow-up training.
+
+---
+
+## Visual Demo Showcase (Live Telemetry & Dual Theme UI)
+
+| Live Telemetry Pipeline Monitor | 3D Interactive Simulation Workspace |
+| :---: | :---: |
+| ![Live Telemetry Pipeline](docs/screenshots/telemetry_pipeline_live.png) | ![3D Simulation Workspace](docs/screenshots/simulation_3d_workspace.png) |
+
+| Command Center (White Theme) | Scenario Library |
+| :---: | :---: |
+| ![Command Center](docs/screenshots/command_center.png) | ![Scenario Library](docs/screenshots/scenario_library.png) |
 
 ---
 
@@ -127,7 +139,7 @@ The test suite verifies:
 
 ## 7. Demonstration Scenarios
 
-Three pre-seeded scenarios are ready for SIH evaluation:
+Three pre-seeded scenarios are ready for operational training and evaluation:
 1. **Alpha-1: Clear Airspace Baseline** (Beginner): Prompt delivery, 2% loss rate, ideal for baseline calibration.
 2. **Bravo-2: Delayed & Noisy Multi-Vector Ingress** (Intermediate): Heavy rain, 3.2s average delay, 14% packet loss.
 3. **Charlie-3: Severe Jamming & Incomplete Evidence** (Advanced): High RF jamming, 35% packet loss, 5.5s delay. Trainees must exercise evidence verification.
@@ -145,4 +157,4 @@ For the full evaluation script, see [docs/demo-script.md](file:///c:/garuda/docs
 - [Evaluator Demo Walkthrough](file:///c:/garuda/docs/demo-script.md)
 
 ---
-*Built for Smart India Hackathon 2026 by Team DareDevils.*
+*GARUDA — Autonomous Counter-UAS Simulation & Evaluation Platform.*

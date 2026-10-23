@@ -55,13 +55,13 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
   }
 
   return (
-    <div className="relative w-full aspect-square max-w-[680px] mx-auto bg-[#050505] rounded-2xl border border-[#00E5FF]/25 shadow-[0_0_50px_rgba(0,0,0,0.9)] overflow-hidden flex items-center justify-center select-none">
-      {/* Radar Sweep Effect (Electric Cyan Gradient) */}
-      <div className="absolute inset-0 pointer-events-none opacity-30">
+    <div className="relative w-full aspect-square max-w-[680px] mx-auto bg-[#08090B] rounded-lg border border-white/[0.12] shadow-level2 overflow-hidden flex items-center justify-center select-none">
+      {/* Radar Sweep Effect (Restrained subtle sweep line) */}
+      <div className="absolute inset-0 pointer-events-none opacity-20">
         <div 
-          className="w-full h-full rounded-full border border-[#00E5FF]/20"
+          className="w-full h-full rounded-full border border-white/[0.08]"
           style={{
-            background: 'conic-gradient(from 0deg at 50% 50%, rgba(0, 229, 255, 0.3) 0deg, rgba(0, 229, 255, 0) 65deg, transparent 360deg)',
+            background: 'conic-gradient(from 0deg at 50% 50%, rgba(0, 207, 232, 0.2) 0deg, rgba(0, 207, 232, 0) 65deg, transparent 360deg)',
             animation: 'spin 6s linear infinite',
           }}
         />
@@ -69,20 +69,16 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
 
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="relative z-10 w-full h-full">
         <defs>
-          <radialGradient id="radarGridGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#3B0A6B" stopOpacity="0.4" />
-            <stop offset="60%" stopColor="#15121C" stopOpacity="0.75" />
-            <stop offset="100%" stopColor="#050505" stopOpacity="1" />
+          <radialGradient id="radarGridGradient" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#191C23" stopOpacity="0.8" />
+            <stop offset="60%" stopColor="#111318" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#08090B" stopOpacity="1" />
           </radialGradient>
-          
-          <filter id="cyanGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
         </defs>
 
         {/* Tactical Grid Background */}
-        <circle cx={center} cy={center} r={center - 10} fill="url(#radarGridGlow)" stroke="#3B0A6B" strokeWidth="1.5" />
+        <circle cx={center} cy={center} r={center - 10} fill="url(#radarGridGradient)" stroke="rgba(255, 255, 255, 0.12)" strokeWidth="1" />
+
 
         {/* Range Rings: 1km, 2km, 3km, 4km (Electric Cyan / Amethyst) */}
         {[1000, 2000, 3000, 4000].map((range) => {
@@ -94,7 +90,7 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
                 cy={center}
                 r={r}
                 fill="none"
-                stroke="#00E5FF"
+                stroke="#00CFE8"
                 strokeWidth="1"
                 strokeDasharray="4 4"
                 opacity={0.3}
@@ -102,7 +98,7 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
               <text
                 x={center + 8}
                 y={center - r + 14}
-                fill="#00E5FF"
+                fill="#00CFE8"
                 fontSize="10"
                 fontFamily="JetBrains Mono, monospace"
                 opacity={0.75}
@@ -118,8 +114,8 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
           cx={center}
           cy={center}
           r={1800 * scale}
-          fill="rgba(59, 10, 107, 0.15)"
-          stroke="#00E5FF"
+          fill="rgba(112, 71, 200, 0.15)"
+          stroke="#00CFE8"
           strokeWidth="1.5"
           strokeDasharray="6 3"
           opacity={0.7}
@@ -127,7 +123,7 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
         <text
           x={center + 8}
           y={center - 1800 * scale - 4}
-          fill="#00E5FF"
+          fill="#00CFE8"
           fontSize="9"
           fontWeight="bold"
           fontFamily="JetBrains Mono, monospace"
@@ -137,19 +133,19 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
         </text>
 
         {/* Compass Crosshairs */}
-        <line x1={center} y1={20} x2={center} y2={size - 20} stroke="#3B0A6B" strokeWidth="1" opacity={0.6} />
-        <line x1={20} y1={center} x2={size - 20} y2={center} stroke="#3B0A6B" strokeWidth="1" opacity={0.6} />
+        <line x1={center} y1={20} x2={center} y2={size - 20} stroke="#7047C8" strokeWidth="1" opacity={0.6} />
+        <line x1={20} y1={center} x2={size - 20} y2={center} stroke="#7047C8" strokeWidth="1" opacity={0.6} />
 
         {/* Compass Cardinal Points */}
-        <text x={center} y={35} textAnchor="middle" fill="#00E5FF" fontSize="12" fontWeight="bold">000° N</text>
-        <text x={size - 40} y={center + 4} textAnchor="middle" fill="#00E5FF" fontSize="11">090° E</text>
-        <text x={center} y={size - 25} textAnchor="middle" fill="#00E5FF" fontSize="11">180° S</text>
-        <text x={40} y={center + 4} textAnchor="middle" fill="#00E5FF" fontSize="11">270° W</text>
+        <text x={center} y={35} textAnchor="middle" fill="#00CFE8" fontSize="12" fontWeight="bold">000° N</text>
+        <text x={size - 40} y={center + 4} textAnchor="middle" fill="#00CFE8" fontSize="11">090° E</text>
+        <text x={center} y={size - 25} textAnchor="middle" fill="#00CFE8" fontSize="11">180° S</text>
+        <text x={40} y={center + 4} textAnchor="middle" fill="#00CFE8" fontSize="11">270° W</text>
 
         {/* Central Tactical HQ Base */}
-        <circle cx={center} cy={center} r={6} fill="#00E5FF" filter="url(#cyanGlow)" />
-        <circle cx={center} cy={center} r={14} fill="none" stroke="#3B0A6B" strokeWidth="2" />
-        <text x={center} y={center + 26} textAnchor="middle" fill="#AAA3B5" fontSize="10" fontWeight="600" fontFamily="monospace">
+        <circle cx={center} cy={center} r={5} fill="#00CFE8" />
+        <circle cx={center} cy={center} r={12} fill="none" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="1.5" />
+        <text x={center} y={center + 24} textAnchor="middle" fill="#B3B7C2" fontSize="10" fontWeight="600" fontFamily="monospace">
           HQ DEFENSE NODE
         </text>
 
@@ -165,14 +161,14 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
 
             return (
               <g key={`gt-${gt.entity_id}`}>
-                <line x1={cx} y1={cy} x2={vx} y2={vy} stroke={isHostile ? '#EF4444' : '#10B981'} strokeWidth="2" strokeDasharray="3 3" opacity={0.8} />
+                <line x1={cx} y1={cy} x2={vx} y2={vy} stroke={isHostile ? '#EF4444' : '#10B981'} strokeWidth="1.5" strokeDasharray="3 3" opacity={0.8} />
                 <circle
                   cx={cx}
                   cy={cy}
                   r={8}
                   fill="none"
                   stroke={isHostile ? '#EF4444' : '#10B981'}
-                  strokeWidth="2"
+                  strokeWidth="1.5"
                   opacity={0.9}
                 />
                 <circle cx={cx} cy={cy} r={3} fill={isHostile ? '#EF4444' : '#10B981'} />
@@ -201,7 +197,7 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
           return (
             <g
               key={`obs-${obs.id}`}
-              className="cursor-pointer transition-transform hover:scale-110"
+              className="cursor-pointer transition-transform hover:scale-105"
               onClick={() => onSelectEntity(eid)}
             >
               {/* Uncertainty Zone */}
@@ -209,8 +205,8 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
                 cx={cx}
                 cy={cy}
                 r={uncertaintyRadius}
-                fill={isSelected ? 'rgba(0, 229, 255, 0.18)' : 'rgba(59, 10, 107, 0.12)'}
-                stroke={isSelected ? '#00E5FF' : '#3B0A6B'}
+                fill={isSelected ? 'rgba(0, 207, 232, 0.12)' : 'rgba(112, 71, 200, 0.08)'}
+                stroke={isSelected ? '#00CFE8' : 'rgba(255, 255, 255, 0.2)'}
                 strokeWidth="1"
                 strokeDasharray="2 2"
               />
@@ -218,10 +214,9 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
               {/* Observed Blip */}
               <polygon
                 points={`${cx},${cy - 8} ${cx + 7},${cy + 6} ${cx - 7},${cy + 6}`}
-                fill={isSelected ? '#00E5FF' : '#38BDF8'}
-                stroke={isSelected ? '#FFFFFF' : '#3B0A6B'}
-                strokeWidth="1.5"
-                filter={isSelected ? 'url(#cyanGlow)' : undefined}
+                fill={isSelected ? '#00CFE8' : '#38BDF8'}
+                stroke={isSelected ? '#FFFFFF' : 'rgba(0,0,0,0.5)'}
+                strokeWidth="1"
               />
 
               {/* Entity Callout Tag */}
@@ -231,15 +226,15 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
                 width={70}
                 height={20}
                 rx={4}
-                fill="#15121C"
-                stroke={isSelected ? '#00E5FF' : 'rgba(255, 255, 255, 0.15)'}
+                fill="#111318"
+                stroke={isSelected ? '#00CFE8' : 'rgba(255, 255, 255, 0.15)'}
                 strokeWidth="1"
                 opacity={0.95}
               />
               <text
                 x={cx + 16}
                 y={cy - 4}
-                fill={isSelected ? '#00E5FF' : '#F7F5FA'}
+                fill={isSelected ? '#00CFE8' : '#F4F5F7'}
                 fontSize="10"
                 fontFamily="JetBrains Mono, monospace"
                 fontWeight="bold"
@@ -250,7 +245,7 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
               <text
                 x={cx + 12}
                 y={cy + 14}
-                fill="#AAA3B5"
+                fill="#B3B7C2"
                 fontSize="8"
                 fontFamily="JetBrains Mono, monospace"
               >
@@ -273,15 +268,15 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
                 cy={cy}
                 r={16}
                 fill="none"
-                stroke="#00E5FF"
-                strokeWidth="2"
+                stroke="#00CFE8"
+                strokeWidth="1.5"
                 strokeDasharray="3 3"
               />
               <text
                 x={cx}
                 y={cy + 28}
                 textAnchor="middle"
-                fill="#00E5FF"
+                fill="#00CFE8"
                 fontSize="8"
                 fontFamily="JetBrains Mono, monospace"
                 fontWeight="bold"
@@ -296,22 +291,23 @@ export const TacticalRadarCanvas: React.FC<TacticalRadarCanvasProps> = ({
       {/* Radar Coordinate & Status Header Overlay */}
       <div className="absolute top-4 left-4 z-20 flex flex-col gap-1 pointer-events-none">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#00E5FF] animate-ping" />
-          <span className="text-xs font-mono font-semibold text-[#00E5FF] tracking-wider">
+          <span className="w-2 h-2 rounded-full bg-[#00CFE8]" />
+          <span className="text-xs font-mono font-semibold text-[#00CFE8] tracking-wider">
             TACTICAL GRID ACTIVE
           </span>
         </div>
-        <span className="text-[10px] font-mono text-[#AAA3B5]">
+        <span className="text-[10px] font-mono text-[#B3B7C2]">
           RANGE: 4.5km | BEARING: 360° | CLOCK: {currentSimTime.toFixed(1)}s
         </span>
       </div>
 
       {/* Evaluator Mode Indicator Badge */}
       {isEvaluatorMode && (
-        <div className="absolute top-4 right-4 z-20 px-3 py-1 rounded-lg bg-[#241039]/80 backdrop-blur-md border border-[#3B0A6B] text-[#00E5FF] font-mono text-[11px] font-bold shadow-[0_0_15px_rgba(0,229,255,0.2)]">
+        <div className="absolute top-4 right-4 z-20 px-3 py-1 rounded-lg bg-[#7047C8]/25 backdrop-blur-md border border-white/[0.12] text-[#00CFE8] font-mono text-[11px] font-semibold">
           EVALUATOR GROUND TRUTH UNLOCKED
         </div>
       )}
+
     </div>
   );
 };

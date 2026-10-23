@@ -97,7 +97,8 @@ export const WeatherEffects3D: React.FC<WeatherEffectsProps> = ({
 
   return (
     <group>
-      {/* Dynamic Atmospheric Fog */}
+      {/* Dynamic Atmospheric Scene Background & Fog */}
+      <color attach="background" args={[fogColor]} />
       <fog attach="fog" args={[fogColor, fogNear, fogFar]} />
 
       {/* Natural Sky Dome */}

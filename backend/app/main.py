@@ -21,12 +21,18 @@ from app.api.reports import router as reports_router
 from app.api.overview import router as overview_router
 from app.api.assessment import router as assessment_router
 from app.api.telemetry import router as telemetry_router, get_live_telemetry_tick
-from fastapi import WebSocket, WebSocketDisconnect
+import logging
 import asyncio
+from fastapi import WebSocket, WebSocketDisconnect, HTTPException
+from app.engine.clock import clock_manager
+
+logger = logging.getLogger("garuda.main")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Capture main event loop for authoritative background clock tasks
+    clock_manager.set_loop(asyncio.get_running_loop())
     # Initialize database tables
     Base.metadata.create_all(bind=engine)
     # Seed demonstration scenarios
@@ -40,7 +46,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="GARUDA — Threat Simulation Trainer API",
-    description="AI-Enabled Drone & Counter-Drone Threat Simulation Trainer (SIH26247). Generative AI for Realistic Unmanned-threat Detection and Assessment.",
+    description="AI-Enabled Drone & Counter-Drone Threat Simulation Trainer. Real-time tactical kinematics, degraded evidence analysis, decision assessment, and adaptive training.",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -73,17 +79,32 @@ async def websocket_simulation_telemetry(websocket: WebSocket, run_id: str):
     Real-time WebSocket telemetry transport broadcasting authoritative 3D simulation ticks.
     """
     await websocket.accept()
+    # Verify simulation run exists before initiating stream
+    db = SessionLocal()
+    try:
+        run = db.query(SimulationRun).filter(SimulationRun.id == run_id).first()
+        if not run:
+            await websocket.send_json({"error": "Run not found", "run_id": run_id})
+            await websocket.close(code=1008)
+            return
+    finally:
+        db.close()
+
     try:
         while True:
             db = SessionLocal()
             try:
                 tick = get_live_telemetry_tick(run_id=run_id, db=db)
                 await websocket.send_text(tick.model_dump_json())
+            except HTTPException:
+                break
             finally:
                 db.close()
             await asyncio.sleep(0.5)  # 2 Hz telemetry stream over WS
-    except (WebSocketDisconnect, Exception):
+    except (WebSocketDisconnect, asyncio.CancelledError):
         pass
+    except Exception as e:
+        logger.warning(f"WebSocket telemetry error for {run_id}: {e}")
 
 
 @app.get("/")
@@ -91,8 +112,8 @@ def root():
     return {
         "project": "GARUDA",
         "description": "AI-Enabled Drone & Counter-Drone Threat Simulation Trainer",
-        "problem_statement_id": "SIH26247",
-        "team": "DareDevils",
+        "platform": "Autonomous Counter-UAS Simulation & Evaluation Rig",
+        "version": "1.0.0",
         "status": "OPERATIONAL",
         "docs": "/docs"
     }

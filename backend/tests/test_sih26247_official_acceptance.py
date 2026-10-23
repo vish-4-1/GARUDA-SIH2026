@@ -307,7 +307,7 @@ def test_sih_assessment_decision_tree_metrics_and_scoring(db):
 
 def test_sih_assessment_evidence_limited_exemption_differentiator(db):
     """
-    CRITICAL SIH REQUIREMENT: Evidence-limited events are distinguished from trainee errors.
+    CRITICAL REQUIREMENT: Evidence-limited events are distinguished from trainee errors.
     If a hostile drone had 100% packet loss (due to jamming), the trainee cannot see it.
     The evaluator MUST NOT penalize the trainee with a Missed Detection penalty!
     """

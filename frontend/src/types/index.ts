@@ -159,6 +159,23 @@ export interface OverallScore {
   classification_score: number;
   timeliness_score: number;
   evidence_awareness_score: number;
+  summary_metrics?: Record<string, any>;
+  engine_metadata?: {
+    engine_name: string;
+    engine_version: string;
+    engine_type: string;
+    runtime_framework: string;
+    inference_location: string;
+    runtime_status: string;
+    artifact_id: string;
+    ai_ml_model_present: boolean;
+    ai_ml_inference_used: boolean;
+    input_schema: string;
+    output_schema: string;
+    limitations_and_fallbacks: string;
+    evaluation_timestamp: string;
+  };
+  evaluation_status?: string;
   metrics: ScoringRecord[];
   decision_evaluations: DecisionEvaluationItem[];
   evidence_aware_disclaimer: string;
@@ -176,6 +193,11 @@ export interface TrainingRecommendation {
   suggested_scenario_config: Record<string, any>;
   is_launched: boolean;
   launched_run_id?: string;
+  launched_run_score?: number;
+  launched_run_status?: string;
+  occurrence_count?: number;
+  source_runs?: string[];
+  created_at?: string;
 }
 
 export interface AfterActionReview {
@@ -190,6 +212,7 @@ export interface AfterActionReview {
   duration_seconds: number;
   current_sim_time: number;
   overall_score: number;
+  evaluation_status?: string;
   score_breakdown: OverallScore;
   recommendations: TrainingRecommendation[];
   timeline_summary: {

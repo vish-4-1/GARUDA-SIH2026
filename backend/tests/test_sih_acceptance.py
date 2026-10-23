@@ -38,7 +38,7 @@ def test_sih_req1_and_req2_scenarios_procedural_and_seed_reproducibility(client)
 
     # 2. Procedural scenario generation with custom seed and rural environment
     procedural_payload = {
-        "name": "SIH Procedural Border & Rural Incursion",
+        "name": "Procedural Border & Rural Incursion",
         "description": "Procedural scenario with multi-threat swarm across rural terrain",
         "environment": "rural",
         "difficulty": "Advanced",

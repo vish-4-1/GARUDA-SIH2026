@@ -7,6 +7,7 @@ from app.models.scenario import Scenario, ScenarioConfiguration
 from app.models.simulation import SimulationRun, GroundTruthEvent, Observation, TraineeDecision
 from app.engine.generator import generate_synthetic_ground_truth
 from app.engine.degradation import apply_sensor_degradation
+from app.engine.clock import clock_manager
 
 
 class SimulationService:
@@ -157,6 +158,7 @@ class SimulationService:
                 run.started_at = datetime.utcnow()
             db.commit()
             db.refresh(run)
+            clock_manager.start_clock(run.id)
         return run
 
     @staticmethod
@@ -168,6 +170,7 @@ class SimulationService:
             run.status = "PAUSED"
             db.commit()
             db.refresh(run)
+            clock_manager.stop_clock(run.id)
         return run
 
     @staticmethod
@@ -185,6 +188,7 @@ class SimulationService:
             run.current_sim_time = float(run.duration_seconds)
             run.status = "COMPLETED"
             run.completed_at = datetime.utcnow()
+            clock_manager.stop_clock(run.id)
         else:
             run.current_sim_time = new_time
             if run.status == "INITIALIZED":
@@ -205,6 +209,7 @@ class SimulationService:
         if clamped_time >= run.duration_seconds:
             run.status = "COMPLETED"
             run.completed_at = datetime.utcnow()
+            clock_manager.stop_clock(run.id)
         elif run.status == "COMPLETED" and clamped_time < run.duration_seconds:
             run.status = "PAUSED"
         db.commit()
@@ -217,6 +222,7 @@ class SimulationService:
         if not run:
             raise ValueError(f"Run {run_id} not found")
         
+        clock_manager.stop_clock(run.id)
         # Reset sim time and clear decisions
         run.current_sim_time = 0.0
         run.status = "INITIALIZED"

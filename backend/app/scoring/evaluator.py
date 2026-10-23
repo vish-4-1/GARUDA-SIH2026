@@ -183,16 +183,22 @@ class EvidenceAwareScoringEngine:
                 # Event was 100% lost due to jamming/packet loss -> EXCLUDED from missed count!
                 unassessable_count += 1
 
+        has_decisions = (len(decisions) > 0)
+        has_assessable = (assessable_decisions_count > 0)
+
+        # 1. Detection Rate (Observable threats detected / Total observable threats)
         detection_rate = round(
             (detected_hostile_count / observable_hostile_count * 100.0)
-            if observable_hostile_count > 0 else 100.0,
+            if observable_hostile_count > 0 else (100.0 if not has_decisions else 0.0),
             1
         )
+        if not has_decisions and observable_hostile_count > 0:
+            detection_rate = 0.0
 
-        # 2. Classification Accuracy
+        # 2. Classification Accuracy: 0.0 if no assessable decisions made
         classification_accuracy = round(
             (correct_classifications / assessable_decisions_count * 100.0)
-            if assessable_decisions_count > 0 else (100.0 if len(decisions) == 0 else 0.0),
+            if has_assessable else 0.0,
             1
         )
 
@@ -206,13 +212,11 @@ class EvidenceAwareScoringEngine:
 
         # 4. Timeliness / Latency score
         mean_latency = round(sum(response_latencies) / len(response_latencies), 2) if response_latencies else 0.0
-        # Latency score decays from 100 down if latency > 10 seconds
-        latency_score = round(max(30.0, 100.0 - max(0.0, mean_latency - 4.0) * 4.0), 1)
+        latency_score = round(max(30.0, 100.0 - max(0.0, mean_latency - 4.0) * 4.0), 1) if has_decisions else 0.0
 
         # 5. Evidence Awareness Bonus/Penalty
-        # Trainee gets points for prudent actions under degraded evidence, and small deduction for blind guessing
         blind_guesses = unassessable_count
-        evidence_awareness_score = round(max(0.0, 100.0 - (blind_guesses * 15.0)), 1)
+        evidence_awareness_score = round(max(0.0, 100.0 - (blind_guesses * 15.0)), 1) if has_decisions else 0.0
 
         # 6. Overall Weighted Score
         # Overall = 0.35 * Detection + 0.30 * Classification + 0.15 * Latency + 0.20 * EvidenceAwareness - (False Alarm Penalty)
@@ -222,8 +226,27 @@ class EvidenceAwareScoringEngine:
             (0.15 * latency_score) +
             (0.20 * evidence_awareness_score) -
             (false_alarm_rate * 0.25)
-        )
+        ) if has_decisions else 0.0
         overall_score = round(max(0.0, min(100.0, raw_overall)), 1)
+
+        evaluation_status = "EVALUATED" if has_decisions else "PENDING_DECISIONS"
+
+        # Engine Transparency Metadata
+        engine_metadata = {
+            "engine_name": "GARUDA Deterministic Evaluation Engine",
+            "engine_version": "v1.0-ruleset",
+            "engine_type": "Deterministic Rule-Based Evaluator",
+            "runtime_framework": "Python 3.12 / FastAPI / SQLAlchemy / Pydantic V2",
+            "inference_location": "Local Backend Worker (backend:8000)",
+            "runtime_status": "OPERATIONAL",
+            "artifact_id": "RULES_EVALUATOR_CORE",
+            "ai_ml_model_present": False,
+            "ai_ml_inference_used": False,
+            "input_schema": "GroundTruthEvent[], Observation[] (timestamp-isolated), TraineeDecision[]",
+            "output_schema": "DetectionRate (35%), ClassificationAccuracy (30%), Timeliness (15%), EvidenceDiscipline (20%), OverallScore (0-100)",
+            "limitations_and_fallbacks": "Evaluates decisions deterministically against pre-decision delivered observations. No neural network or LLM inference is currently executed.",
+            "evaluation_timestamp": datetime.utcnow().isoformat()
+        }
 
         # Update run in DB
         run.overall_score = overall_score
@@ -316,6 +339,8 @@ class EvidenceAwareScoringEngine:
             "timeliness_score": latency_score,
             "evidence_awareness_score": evidence_awareness_score,
             "summary_metrics": run.summary_metrics,
+            "engine_metadata": engine_metadata,
+            "evaluation_status": evaluation_status,
             "metrics": records,
             "decision_evaluations": decision_evals,
             "evidence_aware_disclaimer": "GARUDA Evidence-Aware Scoring: Trainees are evaluated strictly against observations actually delivered. Dropped or delayed packets do not penalize the trainee as misses."

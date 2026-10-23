@@ -11,7 +11,7 @@ router = APIRouter(prefix="/assessment", tags=["Unit & Individual Assessment"])
 @router.get("/unit-summary")
 def get_unit_summary(db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
-    SIH26247 Requirement 6:
+    Operational Requirement 6:
     Maintain individual session histories and aggregate performance across multiple trainees.
     Provide unit-level summaries only when multiple trainee records exist.
     Display N/A when there is insufficient data instead of inventing aggregate statistics.
@@ -50,7 +50,7 @@ def get_unit_summary(db: Session = Depends(get_db)) -> Dict[str, Any]:
             "unit_mean_detection_rate": "N/A",
             "unit_mean_classification_accuracy": "N/A",
             "unit_mean_latency_s": "N/A",
-            "notice": "Unit-level aggregate summary requires records from multiple distinct trainees. Displaying N/A per SIH data integrity standards.",
+            "notice": "Unit-level aggregate summary requires records from multiple distinct trainees. Displaying N/A per data integrity standards.",
             "individual_trainees": individual_profiles
         }
 

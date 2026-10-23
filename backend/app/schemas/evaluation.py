@@ -46,6 +46,8 @@ class OverallScoreOut(BaseModel):
     timeliness_score: float
     evidence_awareness_score: float
     summary_metrics: Optional[Dict[str, Any]] = None
+    engine_metadata: Optional[Dict[str, Any]] = None
+    evaluation_status: Optional[str] = "EVALUATED"
     metrics: List[ScoringRecordOut]
     decision_evaluations: List[DecisionEvaluationItem]
     evidence_aware_disclaimer: str
@@ -63,6 +65,11 @@ class TrainingRecommendationOut(BaseModel):
     suggested_scenario_config: Dict[str, Any]
     is_launched: bool = False
     launched_run_id: Optional[str] = None
+    launched_run_score: Optional[float] = None
+    launched_run_status: Optional[str] = None
+    occurrence_count: Optional[int] = 1
+    source_runs: Optional[List[str]] = None
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -80,6 +87,7 @@ class AfterActionReviewOut(BaseModel):
     duration_seconds: int
     current_sim_time: float
     overall_score: float
+    evaluation_status: Optional[str] = "EVALUATED"
     score_breakdown: OverallScoreOut
     recommendations: List[TrainingRecommendationOut]
     timeline_summary: Dict[str, int]

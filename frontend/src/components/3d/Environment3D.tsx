@@ -8,239 +8,449 @@ interface Environment3DProps {
   graphicsQuality?: 'high' | 'medium' | 'low';
 }
 
+type UrbanFeatures = {
+  type: 'urban';
+  buildings: Array<{
+    pos: [number, number, number];
+    size: [number, number, number];
+    color: string;
+    windowColor: string;
+    roofColor: string;
+    type: 'skyscraper' | 'commercial' | 'residential';
+    hasHelipad?: boolean;
+    hasAntenna?: boolean;
+  }>;
+  avenueTrees: Array<[number, number, number]>;
+};
+
+type RuralFeatures = {
+  type: 'rural';
+  trees: Array<{ pos: [number, number, number]; scale: number; isPine: boolean }>;
+  structures: Array<{ pos: [number, number, number]; type: string }>;
+};
+
+type CoastalFeatures = {
+  type: 'coastal';
+  coastalRocks: Array<{ pos: [number, number, number]; size: [number, number, number]; rot: number }>;
+  coastalTrees: Array<[number, number, number]>;
+};
+
+type BorderFeatures = {
+  type: 'border';
+  canyonMesas: Array<{ pos: [number, number, number]; size: [number, number, number] }>;
+  watchtowers: Array<[number, number, number]>;
+};
+
+type Features = UrbanFeatures | RuralFeatures | CoastalFeatures | BorderFeatures;
+
 export const Environment3D: React.FC<Environment3DProps> = ({
   environmentType,
   scaleFactor,
   graphicsQuality = 'high',
 }) => {
   const waterRef = useRef<THREE.Mesh>(null);
-  const lighthouseLightRef = useRef<THREE.SpotLight>(null);
+  const lighthouseBeamRef = useRef<THREE.SpotLight>(null);
+  const radarDishRef = useRef<THREE.Group>(null);
 
-  // Animated water ripples & lighthouse beam rotation
-  useFrame((_, delta) => {
-    if (waterRef.current && (environmentType === 'coastal')) {
+  // Dynamic animations for water ripples, lighthouse beam, and radar dish
+  useFrame((state, delta) => {
+    // Ocean water wave roughness and slight position displacement
+    if (waterRef.current && environmentType === 'coastal') {
       const mat = waterRef.current.material as THREE.MeshStandardMaterial;
       if (mat) {
-        mat.roughness = 0.15 + Math.sin(Date.now() * 0.002) * 0.05;
+        mat.roughness = 0.12 + Math.sin(state.clock.elapsedTime * 1.5) * 0.04;
       }
     }
-    if (lighthouseLightRef.current && environmentType === 'coastal') {
-      lighthouseLightRef.current.target.position.x = 260 + Math.cos(Date.now() * 0.0015) * 120;
-      lighthouseLightRef.current.target.position.z = -120 + Math.sin(Date.now() * 0.0015) * 120;
-      lighthouseLightRef.current.target.updateMatrixWorld();
+    // Rotating coastal lighthouse beam
+    if (lighthouseBeamRef.current && environmentType === 'coastal') {
+      const angle = state.clock.elapsedTime * 0.8;
+      lighthouseBeamRef.current.target.position.x = 280 + Math.cos(angle) * 150;
+      lighthouseBeamRef.current.target.position.z = -140 + Math.sin(angle) * 150;
+      lighthouseBeamRef.current.target.updateMatrixWorld();
+    }
+    // Rotating border defense radar dish
+    if (radarDishRef.current && environmentType === 'border') {
+      radarDishRef.current.rotation.y += delta * 1.2;
     }
   });
 
-  // Range rings (1km, 2km, 3km, 4km)
-  const rings = [1000, 2000, 3000, 4000].map((r) => r * scaleFactor);
-  const perimeterRadius = 1800 * scaleFactor;
-
-  // -------------------------------------------------------------------------
-  // PROCEDURAL SEEDED FEATURE GENERATION
-  // -------------------------------------------------------------------------
+  // Procedural features generation with deterministic pseudo-random seed
   const features = useMemo(() => {
     const rng = (seed: number) => {
       const x = Math.sin(seed) * 10000;
       return x - Math.floor(x);
     };
 
+    // =========================================================================
+    // 1. URBAN ENVIRONMENT DATA
+    // =========================================================================
     if (environmentType === 'urban') {
-      // Generate Urban Buildings arranged in city blocks along street corridors
       const buildings: Array<{
         pos: [number, number, number];
         size: [number, number, number];
         color: string;
+        windowColor: string;
         roofColor: string;
+        type: 'skyscraper' | 'commercial' | 'residential';
+        hasHelipad?: boolean;
         hasAntenna?: boolean;
-        hasHVAC?: boolean;
       }> = [];
 
       let seed = 42;
-      const palette = ['#737B85', '#8C949E', '#5A626B', '#A4ABB5', '#6D747D', '#4B535E', '#9E6B55']; // concrete, glass-tint, warm brick
+      const buildingColors = ['#5A626B', '#6D747D', '#7B848F', '#4A525B', '#8E95A0', '#414750'];
+      const windowTints = ['#93C5FD', '#60A5FA', '#38BDF8', '#CBD5E1', '#1E293B'];
 
-      // City blocks outside center clear zone (radius > 160)
-      const gridSize = 7;
-      const spacing = 75;
+      // City blocks outside center clear zone (radius 100m to 560m)
+      const gridSize = 6;
+      const spacing = 80;
       for (let ix = -gridSize; ix <= gridSize; ix++) {
         for (let iz = -gridSize; iz <= gridSize; iz++) {
-          const bx = ix * spacing + (rng(seed++) - 0.5) * 15;
-          const bz = iz * spacing + (rng(seed++) - 0.5) * 15;
+          const bx = ix * spacing + (rng(seed++) - 0.5) * 16;
+          const bz = iz * spacing + (rng(seed++) - 0.5) * 16;
           const distFromCenter = Math.hypot(bx, bz);
 
-          // Keep central tactical base clear
-          if (distFromCenter < 140 || distFromCenter > 520) continue;
+          // Keep central tactical command area clear
+          if (distFromCenter < 120 || distFromCenter > 520) continue;
 
-          // Skip some slots for roads / open plazas
-          if ((Math.abs(ix) % 2 === 0 && Math.abs(iz) % 2 === 0) || rng(seed++) < 0.25) continue;
+          // Road corridors gap
+          if ((Math.abs(ix) % 2 === 0 && Math.abs(iz) % 2 === 0) || rng(seed++) < 0.2) continue;
 
-          const w = 26 + rng(seed++) * 24;
-          const d = 26 + rng(seed++) * 24;
-          // Varied heights: taller near center (up to 95m), medium further out
-          const heightFactor = Math.max(0.3, 1.0 - distFromCenter / 600);
-          const h = 25 + rng(seed++) * 75 * heightFactor;
+          const w = 28 + rng(seed++) * 24;
+          const d = 28 + rng(seed++) * 24;
+          // Taller in core business district (up to 140m), tapering outward
+          const heightFactor = Math.max(0.35, 1.0 - distFromCenter / 580);
+          const h = 30 + rng(seed++) * 110 * heightFactor;
 
-          const color = palette[Math.floor(rng(seed++) * palette.length)];
-          const roofColor = rng(seed++) > 0.5 ? '#3A3F47' : '#2A2E35';
+          const color = buildingColors[Math.floor(rng(seed++) * buildingColors.length)];
+          const windowColor = windowTints[Math.floor(rng(seed++) * windowTints.length)];
+          const roofColor = rng(seed++) > 0.5 ? '#2A2E35' : '#1F242B';
 
           buildings.push({
             pos: [bx, h / 2, bz],
             size: [w, h, d],
             color,
+            windowColor,
             roofColor,
-            hasAntenna: rng(seed++) > 0.6,
-            hasHVAC: rng(seed++) > 0.4,
+            type: h > 85 ? 'skyscraper' : h > 50 ? 'commercial' : 'residential',
+            hasHelipad: h > 90 && rng(seed++) > 0.6,
+            hasAntenna: h > 70 && rng(seed++) > 0.4,
           });
         }
       }
 
       // Street trees lining avenues
-      const streetTrees: Array<[number, number, number]> = [];
-      for (let i = 0; i < 36; i++) {
+      const avenueTrees: Array<[number, number, number]> = [];
+      for (let i = 0; i < 48; i++) {
         const ang = rng(seed++) * Math.PI * 2;
-        const rad = 150 + rng(seed++) * 320;
-        streetTrees.push([Math.cos(ang) * rad, 0, Math.sin(ang) * rad]);
+        const rad = 130 + rng(seed++) * 360;
+        avenueTrees.push([Math.cos(ang) * rad, 0, Math.sin(ang) * rad]);
       }
 
-      return { type: 'urban', buildings, streetTrees };
-    } else if (environmentType === 'rural') {
-      // Generate Rural Farmland: Patchwork fields, tree clusters, barns, grain silos
+      return { type: 'urban', buildings, avenueTrees };
+    }
+
+    // =========================================================================
+    // 2. RURAL FARMLAND & ROLLING COUNTRYSIDE DATA
+    // =========================================================================
+    if (environmentType === 'rural') {
       let seed = 101;
       const trees: Array<{ pos: [number, number, number]; scale: number; isPine: boolean }> = [];
-      for (let i = 0; i < (graphicsQuality === 'low' ? 30 : 65); i++) {
+      for (let i = 0; i < (graphicsQuality === 'low' ? 35 : 75); i++) {
         const ang = rng(seed++) * Math.PI * 2;
-        const dist = 140 + rng(seed++) * 360;
+        const dist = 120 + rng(seed++) * 400;
         trees.push({
           pos: [Math.cos(ang) * dist, 0, Math.sin(ang) * dist],
-          scale: 0.8 + rng(seed++) * 0.8,
-          isPine: rng(seed++) > 0.5,
+          scale: 0.9 + rng(seed++) * 0.9,
+          isPine: rng(seed++) > 0.45,
         });
       }
 
-      // Farm structures
+      // Farm structures (Barns, Silos, Farmhouse)
       const structures = [
-        { pos: [-180, 0, 160] as [number, number, number], type: 'barn' },
-        { pos: [-220, 0, 175] as [number, number, number], type: 'silo' },
-        { pos: [-235, 0, 165] as [number, number, number], type: 'silo' },
-        { pos: [220, 0, -180] as [number, number, number], type: 'farmhouse' },
-        { pos: [260, 0, -160] as [number, number, number], type: 'barn' },
+        { pos: [-190, 0, 150] as [number, number, number], type: 'barn' },
+        { pos: [-230, 0, 165] as [number, number, number], type: 'silo' },
+        { pos: [-245, 0, 155] as [number, number, number], type: 'silo' },
+        { pos: [210, 0, -170] as [number, number, number], type: 'farmhouse' },
+        { pos: [250, 0, -150] as [number, number, number], type: 'barn' },
       ];
 
       return { type: 'rural', trees, structures };
-    } else if (environmentType === 'coastal') {
-      // Generate Coastal Terrain: Shoreline, beach, rocky outcrops, dock, lighthouse
+    }
+
+    // =========================================================================
+    // 3. COASTAL SHORELINE & MARITIME DATA
+    // =========================================================================
+    if (environmentType === 'coastal') {
       let seed = 303;
-      const coastalRocks: Array<{ pos: [number, number, number]; size: [number, number, number] }> = [];
-      for (let i = 0; i < 24; i++) {
-        const rx = 140 + rng(seed++) * 180;
-        const rz = (rng(seed++) - 0.5) * 600;
+      const coastalRocks: Array<{ pos: [number, number, number]; size: [number, number, number]; rot: number }> = [];
+      for (let i = 0; i < 30; i++) {
+        const rx = 135 + rng(seed++) * 180;
+        const rz = (rng(seed++) - 0.5) * 700;
         coastalRocks.push({
-          pos: [rx, 4 + rng(seed++) * 6, rz],
-          size: [12 + rng(seed++) * 16, 8 + rng(seed++) * 12, 12 + rng(seed++) * 16],
+          pos: [rx, 3 + rng(seed++) * 8, rz],
+          size: [14 + rng(seed++) * 18, 9 + rng(seed++) * 14, 14 + rng(seed++) * 18],
+          rot: rng(seed++) * Math.PI,
         });
       }
 
       const coastalTrees: Array<[number, number, number]> = [];
-      for (let i = 0; i < 32; i++) {
-        const tx = -50 - rng(seed++) * 350;
-        const tz = (rng(seed++) - 0.5) * 700;
+      for (let i = 0; i < 38; i++) {
+        const tx = -60 - rng(seed++) * 380;
+        const tz = (rng(seed++) - 0.5) * 750;
         coastalTrees.push([tx, 0, tz]);
       }
 
       return { type: 'coastal', coastalRocks, coastalTrees };
-    } else {
-      // Border / Outpost: Arid rocky terrain, watchtowers, security fencing, radar outpost
-      let seed = 505;
-      const hills: Array<{ pos: [number, number, number]; size: [number, number, number] }> = [];
-      for (let i = 0; i < 28; i++) {
-        const ang = rng(seed++) * Math.PI * 2;
-        const dist = 180 + rng(seed++) * 320;
-        hills.push({
-          pos: [Math.cos(ang) * dist, 8 + rng(seed++) * 14, Math.sin(ang) * dist],
-          size: [30 + rng(seed++) * 40, 16 + rng(seed++) * 28, 30 + rng(seed++) * 40],
-        });
-      }
-
-      const watchtowers = [
-        [170, 0, 170] as [number, number, number],
-        [-170, 0, 170] as [number, number, number],
-        [170, 0, -170] as [number, number, number],
-        [-170, 0, -170] as [number, number, number],
-      ];
-
-      return { type: 'border', hills, watchtowers };
     }
+
+    // =========================================================================
+    // 4. BORDER CANYON & MILITARY OUTPOST DATA
+    // =========================================================================
+    let seed = 505;
+    const canyonMesas: Array<{ pos: [number, number, number]; size: [number, number, number] }> = [];
+    for (let i = 0; i < 32; i++) {
+      const ang = rng(seed++) * Math.PI * 2;
+      const dist = 170 + rng(seed++) * 360;
+      canyonMesas.push({
+        pos: [Math.cos(ang) * dist, 12 + rng(seed++) * 20, Math.sin(ang) * dist],
+        size: [35 + rng(seed++) * 55, 24 + rng(seed++) * 40, 35 + rng(seed++) * 55],
+      });
+    }
+
+    const watchtowers = [
+      [150, 0, 150] as [number, number, number],
+      [-150, 0, 150] as [number, number, number],
+      [150, 0, -150] as [number, number, number],
+      [-150, 0, -150] as [number, number, number],
+    ];
+
+    return { type: 'border', canyonMesas, watchtowers };
   }, [environmentType, graphicsQuality]);
+
+  const urbanFeatures = features.type === 'urban' ? (features as UrbanFeatures) : null;
+  const ruralFeatures = features.type === 'rural' ? (features as RuralFeatures) : null;
+  const coastalFeatures = features.type === 'coastal' ? (features as CoastalFeatures) : null;
+  const borderFeatures = features.type === 'border' ? (features as BorderFeatures) : null;
 
   return (
     <group>
       {/* ========================================================================= */}
-      {/* 1. TERRAIN / GROUND BASES ACCORDING TO ENVIRONMENT PRESET                 */}
+      {/* 0. SEAMLESS HORIZON BASE (Prevents isolated floating platform appearance)  */}
+      {/* ========================================================================= */}
+      {/* Endless ground disc extending 8000 units to the horizon */}
+      <mesh position={[0, -1.2, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[8000, 8000]} />
+        <meshStandardMaterial
+          color={
+            environmentType === 'urban'
+              ? '#2A2E35'
+              : environmentType === 'rural'
+              ? '#3E5B28'
+              : environmentType === 'coastal'
+              ? '#3D542E'
+              : '#6E5D47'
+          }
+          roughness={0.96}
+          metalness={0.04}
+        />
+      </mesh>
+
+      {/* Distant Rolling Horizon Hills (Silhouette ring around battlefield perimeter) */}
+      <group position={[0, -2, 0]}>
+        {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg, idx) => {
+          const rad = (deg * Math.PI) / 180;
+          const dist = 1800 + (idx % 3) * 200;
+          const px = Math.cos(rad) * dist;
+          const pz = Math.sin(rad) * dist;
+          const hillH = 90 + (idx % 4) * 55;
+          const hillW = 420 + (idx % 2) * 160;
+          return (
+            <mesh key={`horizon-hill-${idx}`} position={[px, hillH / 2 - 10, pz]}>
+              <coneGeometry args={[hillW, hillH, 12]} />
+              <meshStandardMaterial
+                color={
+                  environmentType === 'urban'
+                    ? '#383E48'
+                    : environmentType === 'rural'
+                    ? '#344D24'
+                    : environmentType === 'coastal'
+                    ? '#2E4426'
+                    : '#5C4A35'
+                }
+                roughness={0.98}
+              />
+            </mesh>
+          );
+        })}
+      </group>
+
+      {/* ========================================================================= */}
+      {/* 1. URBAN ENVIRONMENT PRESET                                              */}
       {/* ========================================================================= */}
       {environmentType === 'urban' && (
         <group>
-          {/* Main Urban Ground Plane: Dark Asphalt / City Fabric */}
+          {/* Main Urban Ground Plane: Paved Asphalt Fabric */}
           <mesh position={[0, -0.6, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[1400, 1400]} />
-            <meshStandardMaterial color="#22252A" roughness={0.85} metalness={0.15} />
+            <planeGeometry args={[1600, 1600]} />
+            <meshStandardMaterial color="#2B3038" roughness={0.88} metalness={0.12} />
           </mesh>
 
-          {/* Road Network Grid (Main East-West and North-South Avenues) */}
-          {[-250, -125, 125, 250].map((coord, i) => (
-            <group key={`road-x-${i}`}>
-              {/* East-West Asphalt Road */}
+          {/* Road Network Grid (Avenues with White & Yellow Markings) */}
+          {[-260, -130, 130, 260].map((coord, i) => (
+            <group key={`road-${i}`}>
+              {/* East-West Asphalt Boulevard */}
               <mesh position={[0, -0.4, coord]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-                <planeGeometry args={[1300, 24]} />
-                <meshStandardMaterial color="#2B2F36" roughness={0.9} />
+                <planeGeometry args={[1580, 26]} />
+                <meshStandardMaterial color="#22252A" roughness={0.9} />
               </mesh>
-              {/* Road White Dashed Lane Markings */}
-              <mesh position={[0, -0.35, coord]} rotation={[-Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[1280, 0.9]} />
-                <meshBasicMaterial color="#E2E8F0" opacity={0.65} transparent />
+              {/* Center Yellow Double Lines */}
+              <mesh position={[0, -0.34, coord]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[1560, 0.8]} />
+                <meshBasicMaterial color="#FBBF24" opacity={0.8} transparent />
               </mesh>
-              {/* North-South Asphalt Road */}
+              {/* North-South Asphalt Boulevard */}
               <mesh position={[coord, -0.4, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-                <planeGeometry args={[24, 1300]} />
-                <meshStandardMaterial color="#2B2F36" roughness={0.9} />
+                <planeGeometry args={[26, 1580]} />
+                <meshStandardMaterial color="#22252A" roughness={0.9} />
               </mesh>
-              {/* North-South White Markings */}
-              <mesh position={[coord, -0.35, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[0.9, 1280]} />
-                <meshBasicMaterial color="#E2E8F0" opacity={0.65} transparent />
+              {/* North-South Center Yellow Double Lines */}
+              <mesh position={[coord, -0.34, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[0.8, 1560]} />
+                <meshBasicMaterial color="#FBBF24" opacity={0.8} transparent />
               </mesh>
             </group>
           ))}
 
-          {/* City Green Parks / Lawn Patches */}
+          {/* City Green Parks / Lawn Plazas */}
           {[
             [-180, -0.45, -180],
             [180, -0.45, 180],
             [-180, -0.45, 180],
             [180, -0.45, -180],
           ].map((pos, i) => (
-            <mesh key={`park-${i}`} position={pos as [number, number, number]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-              <planeGeometry args={[90, 90]} />
-              <meshStandardMaterial color="#3D6832" roughness={0.95} />
-            </mesh>
+            <group key={`park-${i}`} position={pos as [number, number, number]}>
+              <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+                <planeGeometry args={[95, 95]} />
+                <meshStandardMaterial color="#355E28" roughness={0.95} />
+              </mesh>
+              {/* Park Center Fountain Pool */}
+              <mesh position={[0, 0.4, 0]}>
+                <cylinderGeometry args={[14, 15, 1.2, 16]} />
+                <meshStandardMaterial color="#64748B" roughness={0.4} />
+              </mesh>
+              <mesh position={[0, 0.9, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <circleGeometry args={[12, 16]} />
+                <meshStandardMaterial color="#0284C7" roughness={0.1} metalness={0.8} />
+              </mesh>
+            </group>
           ))}
+
+          {/* Procedural Buildings */}
+          {urbanFeatures &&
+            urbanFeatures.buildings.map((b, i) => (
+              <group key={`bldg-${i}`} position={b.pos}>
+                {/* Main Building Body */}
+                <mesh castShadow receiveShadow>
+                  <boxGeometry args={b.size} />
+                  <meshStandardMaterial color={b.color} roughness={0.5} metalness={0.25} />
+                </mesh>
+
+                {/* Glazed Window Accent Panels */}
+                <mesh position={[0, 0, b.size[2] / 2 + 0.1]}>
+                  <planeGeometry args={[b.size[0] * 0.85, b.size[1] * 0.88]} />
+                  <meshStandardMaterial
+                    color={b.windowColor}
+                    roughness={0.15}
+                    metalness={0.7}
+                    opacity={0.85}
+                    transparent
+                  />
+                </mesh>
+                <mesh position={[0, 0, -b.size[2] / 2 - 0.1]} rotation={[0, Math.PI, 0]}>
+                  <planeGeometry args={[b.size[0] * 0.85, b.size[1] * 0.88]} />
+                  <meshStandardMaterial
+                    color={b.windowColor}
+                    roughness={0.15}
+                    metalness={0.7}
+                    opacity={0.85}
+                    transparent
+                  />
+                </mesh>
+
+                {/* Rooftop Parapet Border */}
+                <mesh position={[0, b.size[1] / 2 + 0.8, 0]}>
+                  <boxGeometry args={[b.size[0] * 0.96, 1.6, b.size[2] * 0.96]} />
+                  <meshStandardMaterial color={b.roofColor} roughness={0.8} />
+                </mesh>
+
+                {/* Rooftop HVAC Mechanical Box */}
+                <mesh position={[b.size[0] * 0.2, b.size[1] / 2 + 3.0, b.size[2] * 0.2]} castShadow>
+                  <boxGeometry args={[b.size[0] * 0.35, 4.5, b.size[2] * 0.35]} />
+                  <meshStandardMaterial color="#4B5563" roughness={0.6} metalness={0.4} />
+                </mesh>
+
+                {/* Helipad Marking on tall skyscrapers */}
+                {b.hasHelipad && (
+                  <group position={[0, b.size[1] / 2 + 0.9, 0]}>
+                    <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                      <circleGeometry args={[10, 24]} />
+                      <meshBasicMaterial color="#1E293B" />
+                    </mesh>
+                    <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                      <ringGeometry args={[8.5, 9.5, 24]} />
+                      <meshBasicMaterial color="#FBBF24" />
+                    </mesh>
+                  </group>
+                )}
+
+                {/* Rooftop Telecommunication Mast */}
+                {b.hasAntenna && (
+                  <mesh position={[0, b.size[1] / 2 + 12, 0]} castShadow>
+                    <cylinderGeometry args={[0.3, 0.8, 22, 6]} />
+                    <meshStandardMaterial color="#DC2626" roughness={0.3} metalness={0.8} />
+                  </mesh>
+                )}
+              </group>
+            ))}
+
+          {/* Avenue Trees */}
+          {urbanFeatures &&
+            urbanFeatures.avenueTrees.map((pos, idx) => (
+              <group key={`utree-${idx}`} position={pos}>
+                {/* Trunk */}
+                <mesh position={[0, 4, 0]} castShadow>
+                  <cylinderGeometry args={[0.5, 0.7, 8, 8]} />
+                  <meshStandardMaterial color="#543D28" roughness={0.9} />
+                </mesh>
+                {/* Foliage Canopy */}
+                <mesh position={[0, 9, 0]} castShadow>
+                  <sphereGeometry args={[4.5, 10, 10]} />
+                  <meshStandardMaterial color="#2E6930" roughness={0.9} />
+                </mesh>
+              </group>
+            ))}
         </group>
       )}
 
+      {/* ========================================================================= */}
+      {/* 2. RURAL FARMLAND PRESET                                                 */}
+      {/* ========================================================================= */}
       {environmentType === 'rural' && (
         <group>
-          {/* Main Rolling Meadow Base Ground */}
+          {/* Main Rolling Meadow Terrain */}
           <mesh position={[0, -0.6, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[1400, 1400]} />
+            <planeGeometry args={[1600, 1600]} />
             <meshStandardMaterial color="#4A7538" roughness={0.92} metalness={0.05} />
           </mesh>
 
           {/* Agricultural Patchwork Crop Fields */}
           {[
-            { pos: [-240, -0.45, -200], size: [220, 180], color: '#BFA152' }, // Golden Wheat field
-            { pos: [220, -0.45, -220], size: [240, 190], color: '#3E662F' },  // Lush green pasture
-            { pos: [-220, -0.45, 200], size: [200, 210], color: '#543D28' },  // Plowed dark brown loam
-            { pos: [240, -0.45, 180], size: [210, 170], color: '#8F9B48' },   // Hay / alfalfa field
-            { pos: [0, -0.45, 300], size: [340, 150], color: '#A68A42' },     // Barley field
-            { pos: [0, -0.45, -300], size: [340, 150], color: '#446E33' },    // Orchard / vineyard
+            { pos: [-240, -0.45, -200], size: [240, 200], color: '#C6A752' }, // Golden Wheat field
+            { pos: [220, -0.45, -220], size: [250, 200], color: '#3A682D' },  // Lush green pasture
+            { pos: [-220, -0.45, 200], size: [210, 220], color: '#563E26' },  // Plowed dark brown loam
+            { pos: [240, -0.45, 180], size: [220, 180], color: '#889842' },   // Hay / alfalfa field
+            { pos: [0, -0.45, 320], size: [360, 160], color: '#B39446' },     // Barley field
+            { pos: [0, -0.45, -320], size: [360, 160], color: '#446E33' },    // Orchard / vineyard
           ].map((field, idx) => (
             <mesh key={`field-${idx}`} position={field.pos as [number, number, number]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
               <planeGeometry args={field.size as [number, number]} />
@@ -248,389 +458,344 @@ export const Environment3D: React.FC<Environment3DProps> = ({
             </mesh>
           ))}
 
-          {/* Winding Dirt & Gravel Country Road */}
+          {/* Country Dirt & Gravel Roads */}
           <mesh position={[0, -0.38, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 6]} receiveShadow>
-            <planeGeometry args={[14, 1300]} />
-            <meshStandardMaterial color="#826E54" roughness={0.98} />
+            <planeGeometry args={[14, 1500]} />
+            <meshStandardMaterial color="#887258" roughness={0.98} />
           </mesh>
           <mesh position={[0, -0.38, 0]} rotation={[-Math.PI / 2, 0, -Math.PI / 4]} receiveShadow>
-            <planeGeometry args={[12, 1300]} />
-            <meshStandardMaterial color="#826E54" roughness={0.98} />
+            <planeGeometry args={[12, 1500]} />
+            <meshStandardMaterial color="#887258" roughness={0.98} />
           </mesh>
+
+          {/* Rural Country Stream / Pond */}
+          <group position={[80, -0.3, 40]}>
+            <mesh rotation={[-Math.PI / 2, 0, 0]}>
+              <circleGeometry args={[45, 32]} />
+              <meshStandardMaterial color="#1E3A5F" roughness={0.15} metalness={0.7} />
+            </mesh>
+          </group>
+
+          {/* Farm Structures (Barns, Silos, Farmhouse) */}
+          {ruralFeatures &&
+            ruralFeatures.structures.map((s, idx) => (
+              <group key={`struct-${idx}`} position={s.pos}>
+                {s.type === 'barn' ? (
+                  <group>
+                    {/* Red Barn Body */}
+                    <mesh position={[0, 9, 0]} castShadow receiveShadow>
+                      <boxGeometry args={[28, 18, 42]} />
+                      <meshStandardMaterial color="#8B1E1E" roughness={0.7} />
+                    </mesh>
+                    {/* Pitched Roof */}
+                    <mesh position={[0, 20.5, 0]} rotation={[0, 0, Math.PI / 4]} castShadow>
+                      <boxGeometry args={[22, 22, 44]} />
+                      <meshStandardMaterial color="#FFFFFF" roughness={0.5} />
+                    </mesh>
+                  </group>
+                ) : s.type === 'silo' ? (
+                  <group>
+                    {/* Corrugated Metal Silo Cylinder */}
+                    <mesh position={[0, 16, 0]} castShadow>
+                      <cylinderGeometry args={[6, 6, 32, 16]} />
+                      <meshStandardMaterial color="#94A3B8" roughness={0.35} metalness={0.75} />
+                    </mesh>
+                    {/* Silo Dome Roof */}
+                    <mesh position={[0, 34, 0]} castShadow>
+                      <sphereGeometry args={[6, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
+                      <meshStandardMaterial color="#94A3B8" roughness={0.3} metalness={0.8} />
+                    </mesh>
+                  </group>
+                ) : (
+                  <group>
+                    {/* Farmhouse Body */}
+                    <mesh position={[0, 7, 0]} castShadow receiveShadow>
+                      <boxGeometry args={[22, 14, 26]} />
+                      <meshStandardMaterial color="#E2E8F0" roughness={0.6} />
+                    </mesh>
+                    {/* House Roof */}
+                    <mesh position={[0, 16, 0]} rotation={[0, 0, Math.PI / 4]} castShadow>
+                      <boxGeometry args={[18, 18, 28]} />
+                      <meshStandardMaterial color="#475569" roughness={0.5} />
+                    </mesh>
+                  </group>
+                )}
+              </group>
+            ))}
+
+          {/* Natural Rural Trees (Pine & Deciduous) */}
+          {ruralFeatures &&
+            ruralFeatures.trees.map((t, idx) => (
+              <group key={`rtree-${idx}`} position={t.pos} scale={[t.scale, t.scale, t.scale]}>
+                {t.isPine ? (
+                  <group>
+                    {/* Pine Trunk */}
+                    <mesh position={[0, 4, 0]} castShadow>
+                      <cylinderGeometry args={[0.5, 0.8, 8, 8]} />
+                      <meshStandardMaterial color="#3E2723" roughness={0.9} />
+                    </mesh>
+                    {/* 3 Tiered Pine Needle Cones */}
+                    <mesh position={[0, 10, 0]} castShadow>
+                      <coneGeometry args={[5.5, 9, 8]} />
+                      <meshStandardMaterial color="#1B4D2E" roughness={0.85} />
+                    </mesh>
+                    <mesh position={[0, 16, 0]} castShadow>
+                      <coneGeometry args={[4.2, 8, 8]} />
+                      <meshStandardMaterial color="#215A36" roughness={0.85} />
+                    </mesh>
+                    <mesh position={[0, 21, 0]} castShadow>
+                      <coneGeometry args={[2.8, 6, 8]} />
+                      <meshStandardMaterial color="#28693F" roughness={0.85} />
+                    </mesh>
+                  </group>
+                ) : (
+                  <group>
+                    {/* Deciduous Oak Trunk */}
+                    <mesh position={[0, 5, 0]} castShadow>
+                      <cylinderGeometry args={[0.7, 1.1, 10, 8]} />
+                      <meshStandardMaterial color="#4E342E" roughness={0.9} />
+                    </mesh>
+                    {/* Rounded Leaf Canopy */}
+                    <mesh position={[0, 12, 0]} castShadow>
+                      <sphereGeometry args={[6.5, 12, 12]} />
+                      <meshStandardMaterial color="#3B7A38" roughness={0.9} />
+                    </mesh>
+                  </group>
+                )}
+              </group>
+            ))}
         </group>
       )}
 
+      {/* ========================================================================= */}
+      {/* 3. COASTAL SHORELINE PRESET                                              */}
+      {/* ========================================================================= */}
       {environmentType === 'coastal' && (
         <group>
-          {/* Western Land Mass / Coastal Dunes & Greenery */}
-          <mesh position={[-350, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[700, 1400]} />
-            <meshStandardMaterial color="#50783D" roughness={0.92} />
+          {/* Western Land Mass / Coastal Greenery */}
+          <mesh position={[-380, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[800, 1600]} />
+            <meshStandardMaterial color="#4F793B" roughness={0.92} />
           </mesh>
 
-          {/* Sandy Beach Shoreline Strip (Natural transition) */}
-          <mesh position={[40, -0.45, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[120, 1400]} />
-            <meshStandardMaterial color="#D8C398" roughness={0.88} />
+          {/* Sandy Beach Shoreline Strip */}
+          <mesh position={[45, -0.45, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[130, 1600]} />
+            <meshStandardMaterial color="#DFC9A0" roughness={0.88} />
           </mesh>
 
-          {/* Wet Sand Tide Edge (Glossier dark sand) */}
-          <mesh position={[105, -0.42, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[25, 1400]} />
-            <meshStandardMaterial color="#948060" roughness={0.4} metalness={0.2} />
+          {/* Wet Sand Tide Zone (Dark glistening sand) */}
+          <mesh position={[115, -0.42, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[28, 1600]} />
+            <meshStandardMaterial color="#998363" roughness={0.35} metalness={0.25} />
           </mesh>
 
-          {/* Realistic Ocean Water Body (Eastern half) */}
-          <mesh ref={waterRef} position={[420, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[680, 1400]} />
+          {/* Realistic Ocean Water Body (Eastern Half) */}
+          <mesh ref={waterRef} position={[450, 0.2, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[760, 1600]} />
             <meshStandardMaterial
-              color="#1B5274"
-              roughness={0.12}
-              metalness={0.75}
-              opacity={0.88}
+              color="#134E6F"
+              roughness={0.1}
+              metalness={0.8}
+              opacity={0.9}
               transparent
             />
           </mesh>
 
           {/* Wooden Harbor Boat Dock / Pier extending into Ocean */}
-          <group position={[110, 2.5, 80]}>
+          <group position={[120, 2.8, 80]}>
             <mesh castShadow receiveShadow>
-              <boxGeometry args={[140, 2.5, 16]} />
+              <boxGeometry args={[160, 2.8, 18]} />
               <meshStandardMaterial color="#5C452D" roughness={0.85} />
             </mesh>
-            {/* Dock Support Pilings in water */}
-            {[-50, -20, 10, 40, 60].map((px, i) => (
-              <group key={`piling-${i}`} position={[px, -4, 0]}>
+            {/* Dock Support Pilings */}
+            {[-60, -20, 20, 60].map((px, i) => (
+              <group key={`pile-${i}`} position={[px, -4.5, 0]}>
                 <mesh position={[0, 0, 7]} castShadow>
-                  <cylinderGeometry args={[1, 1, 10, 8]} />
-                  <meshStandardMaterial color="#3D2D1E" roughness={0.9} />
+                  <cylinderGeometry args={[0.9, 0.9, 12, 8]} />
+                  <meshStandardMaterial color="#3D2E1E" roughness={0.9} />
                 </mesh>
                 <mesh position={[0, 0, -7]} castShadow>
-                  <cylinderGeometry args={[1, 1, 10, 8]} />
-                  <meshStandardMaterial color="#3D2D1E" roughness={0.9} />
+                  <cylinderGeometry args={[0.9, 0.9, 12, 8]} />
+                  <meshStandardMaterial color="#3D2E1E" roughness={0.9} />
                 </mesh>
               </group>
             ))}
           </group>
 
-          {/* Coastal Headland Lighthouse on Rocky Promontory */}
-          <group position={[130, 0, -180]}>
-            {/* Rocky base hill */}
+          {/* Maritime Coastal Lighthouse on Rocky Promontory */}
+          <group position={[280, 0, -140]}>
+            {/* Rocky Foundation Base */}
             <mesh position={[0, 8, 0]} castShadow receiveShadow>
-              <cylinderGeometry args={[22, 34, 16, 12]} />
-              <meshStandardMaterial color="#5C5852" roughness={0.95} />
+              <cylinderGeometry args={[26, 32, 16, 12]} />
+              <meshStandardMaterial color="#4A5568" roughness={0.95} />
             </mesh>
-            {/* White Tapered Tower */}
-            <mesh position={[0, 32, 0]} castShadow>
-              <cylinderGeometry args={[4.5, 7.5, 32, 16]} />
-              <meshStandardMaterial color="#E2E8F0" roughness={0.3} />
+            {/* Lighthouse Tapered Tower */}
+            <mesh position={[0, 42, 0]} castShadow>
+              <cylinderGeometry args={[5, 9, 52, 16]} />
+              <meshStandardMaterial color="#FFFFFF" roughness={0.4} />
             </mesh>
-            {/* Red Mid-band Stripe */}
-            <mesh position={[0, 32, 0]} castShadow>
-              <cylinderGeometry args={[5.6, 6.4, 7, 16]} />
-              <meshStandardMaterial color="#DC2626" roughness={0.4} />
+            {/* Red Lantern Gallery Ring */}
+            <mesh position={[0, 69, 0]} castShadow>
+              <cylinderGeometry args={[6.5, 6.5, 3.5, 16]} />
+              <meshStandardMaterial color="#DC2626" roughness={0.3} />
             </mesh>
-            {/* Lantern Room Glass & Top Dome */}
-            <mesh position={[0, 50, 0]} castShadow>
-              <cylinderGeometry args={[4.2, 4.2, 5, 12]} />
-              <meshStandardMaterial color="#0284C7" roughness={0.1} metalness={0.9} />
+            {/* Glass Lantern Housing */}
+            <mesh position={[0, 73, 0]}>
+              <cylinderGeometry args={[5, 5, 5, 12]} />
+              <meshStandardMaterial color="#FBBF24" roughness={0.1} metalness={0.9} />
             </mesh>
-            <mesh position={[0, 54, 0]} castShadow>
-              <sphereGeometry args={[4.2, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
-              <meshStandardMaterial color="#1E293B" metalness={0.8} />
-            </mesh>
-            {/* Rotating Lighthouse Spotlight */}
+            {/* Rotating Spotlight Beam */}
             <spotLight
-              ref={lighthouseLightRef}
-              position={[0, 50, 0]}
-              intensity={4.0}
-              angle={0.25}
-              penumbra={0.4}
+              ref={lighthouseBeamRef}
+              position={[0, 73, 0]}
+              intensity={4.5}
+              angle={0.4}
+              penumbra={0.3}
               color="#FEF08A"
-              distance={400}
+              distance={800}
             />
           </group>
+
+          {/* Coastal Granite Rocks */}
+          {coastalFeatures &&
+            coastalFeatures.coastalRocks.map((r, idx) => (
+              <mesh
+                key={`crock-${idx}`}
+                position={r.pos}
+                rotation={[0, r.rot, 0]}
+                castShadow
+                receiveShadow
+              >
+                <boxGeometry args={r.size} />
+                <meshStandardMaterial color="#64748B" roughness={0.92} />
+              </mesh>
+            ))}
+
+          {/* Coastal Trees */}
+          {coastalFeatures &&
+            coastalFeatures.coastalTrees.map((pos, idx) => (
+              <group key={`ctree-${idx}`} position={pos}>
+                <mesh position={[0, 4, 0]} castShadow>
+                  <cylinderGeometry args={[0.5, 0.8, 8, 8]} />
+                  <meshStandardMaterial color="#4E342E" roughness={0.9} />
+                </mesh>
+                <mesh position={[0, 9, 0]} castShadow>
+                  <sphereGeometry args={[4.5, 10, 10]} />
+                  <meshStandardMaterial color="#2E6930" roughness={0.9} />
+                </mesh>
+              </group>
+            ))}
         </group>
       )}
 
+      {/* ========================================================================= */}
+      {/* 4. BORDER / DESERT OUTPOST PRESET                                        */}
+      {/* ========================================================================= */}
       {environmentType === 'border' && (
         <group>
-          {/* Arid Mountain / Semi-Desert Ground Base */}
+          {/* Main Arid Sandstone Ground Plane */}
           <mesh position={[0, -0.6, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <planeGeometry args={[1400, 1400]} />
-            <meshStandardMaterial color="#8C6E4A" roughness={0.95} metalness={0.05} />
+            <planeGeometry args={[1600, 1600]} />
+            <meshStandardMaterial color="#8C7355" roughness={0.95} metalness={0.05} />
           </mesh>
 
-          {/* Dirt Patrol Perimeter Road */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.4, 0]}>
-            <ringGeometry args={[perimeterRadius - 6, perimeterRadius + 6, 64]} />
-            <meshStandardMaterial color="#6E5539" roughness={0.96} />
+          {/* Central Forward Operating Base (FOB) Pad */}
+          <mesh position={[0, -0.4, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[280, 280]} />
+            <meshStandardMaterial color="#4A5243" roughness={0.85} />
           </mesh>
 
-          {/* Border Security Chain-link Fence Along Perimeter */}
-          {graphicsQuality !== 'low' && (
-            <mesh position={[0, 3, 0]}>
-              <cylinderGeometry args={[perimeterRadius, perimeterRadius, 6, 48, 1, true]} />
-              <meshStandardMaterial color="#78716C" wireframe opacity={0.45} transparent />
+          {/* Security Perimeter Fence Outline */}
+          <lineSegments position={[0, 4, 0]}>
+            <edgesGeometry args={[new THREE.BoxGeometry(276, 8, 276)]} />
+            <lineBasicMaterial color="#94A3B8" opacity={0.6} transparent />
+          </lineSegments>
+
+          {/* Central Tactical Airspace Radar Radome */}
+          <group position={[0, 0, 0]}>
+            {/* Concrete Pedestal */}
+            <mesh position={[0, 4, 0]} castShadow receiveShadow>
+              <cylinderGeometry args={[14, 16, 8, 16]} />
+              <meshStandardMaterial color="#334155" roughness={0.8} />
             </mesh>
-          )}
+            {/* White Surveillance Dome */}
+            <mesh position={[0, 16, 0]} castShadow>
+              <sphereGeometry args={[12, 24, 24]} />
+              <meshStandardMaterial color="#F8FAFC" roughness={0.3} metalness={0.2} />
+            </mesh>
+            {/* Rotating Radar Feed Horn Array */}
+            <group ref={radarDishRef} position={[0, 28, 0]}>
+              <mesh position={[0, 3, 0]} rotation={[0.3, 0, 0]}>
+                <boxGeometry args={[18, 5, 1.5]} />
+                <meshStandardMaterial color="#00E5FF" roughness={0.2} metalness={0.8} />
+              </mesh>
+            </group>
+          </group>
+
+          {/* Military Conex Containers & Modular Headquarters Bunkers */}
+          {[
+            { pos: [-55, 4.5, -45], size: [24, 9, 12], color: '#4B5541' },
+            { pos: [-55, 4.5, -30], size: [24, 9, 12], color: '#685D45' },
+            { pos: [55, 4.5, -45], size: [24, 9, 12], color: '#685D45' },
+            { pos: [-40, 5.5, 55], size: [30, 11, 16], color: '#3F4839' },
+            { pos: [40, 5.5, 55], size: [30, 11, 16], color: '#545D4B' },
+          ].map((c, i) => (
+            <mesh key={`bunker-${i}`} position={c.pos as [number, number, number]} castShadow receiveShadow>
+              <boxGeometry args={c.size as [number, number, number]} />
+              <meshStandardMaterial color={c.color} roughness={0.7} metalness={0.2} />
+            </mesh>
+          ))}
+
+          {/* Watchtowers at 4 Corners of Perimeter */}
+          {borderFeatures &&
+            borderFeatures.watchtowers.map((pos, idx) => (
+              <group key={`tower-${idx}`} position={pos}>
+                {/* 4 Leg Struts */}
+                <mesh position={[0, 14, 0]} castShadow>
+                  <cylinderGeometry args={[2.5, 4.5, 28, 4]} />
+                  <meshStandardMaterial color="#1E293B" metalness={0.8} />
+                </mesh>
+                {/* Lookout Cabin */}
+                <mesh position={[0, 29, 0]} castShadow>
+                  <boxGeometry args={[10, 6, 10]} />
+                  <meshStandardMaterial color="#475569" roughness={0.5} />
+                </mesh>
+                {/* Roof */}
+                <mesh position={[0, 33, 0]} castShadow>
+                  <boxGeometry args={[12, 1.5, 12]} />
+                  <meshStandardMaterial color="#0F172A" />
+                </mesh>
+              </group>
+            ))}
+
+          {/* Arid Canyon Mesas & Rocky Outcrops */}
+          {borderFeatures &&
+            borderFeatures.canyonMesas.map((m, idx) => (
+              <mesh key={`mesa-${idx}`} position={m.pos} castShadow receiveShadow>
+                <boxGeometry args={m.size} />
+                <meshStandardMaterial color="#947A5A" roughness={0.96} />
+              </mesh>
+            ))}
         </group>
       )}
 
       {/* ========================================================================= */}
-      {/* 2. PROCEDURAL 3D STRUCTURES, VEGETATION & FEATURES                        */}
+      {/* 5. TACTICAL BASE DEFENSE RANGE RINGS (Semi-transparent reference circles)  */}
       {/* ========================================================================= */}
-      {/* Urban Buildings with Rooftop Detailing */}
-      {features.type === 'urban' &&
-        features.buildings?.map((b, i) => (
-          <group key={`bld-${i}`} position={b.pos}>
-            {/* Main Building Block */}
-            <mesh castShadow receiveShadow>
-              <boxGeometry args={b.size} />
-              <meshStandardMaterial color={b.color} roughness={0.5} metalness={0.25} />
-            </mesh>
-
-            {/* Rooftop Parapet Perimeter */}
-            <mesh position={[0, b.size[1] / 2 + 0.4, 0]} castShadow>
-              <boxGeometry args={[b.size[0] + 0.5, 0.8, b.size[2] + 0.5]} />
-              <meshStandardMaterial color={b.roofColor} roughness={0.8} />
-            </mesh>
-
-            {/* Rooftop HVAC Elevator Bulkhead / Chiller Unit */}
-            {b.hasHVAC && (
-              <mesh position={[b.size[0] * 0.15, b.size[1] / 2 + 2.5, b.size[2] * 0.15]} castShadow>
-                <boxGeometry args={[b.size[0] * 0.35, 4.5, b.size[2] * 0.35]} />
-                <meshStandardMaterial color="#475569" roughness={0.7} metalness={0.4} />
-              </mesh>
-            )}
-
-            {/* Rooftop Telecommunication Mast */}
-            {b.hasAntenna && (
-              <mesh position={[-b.size[0] * 0.25, b.size[1] / 2 + 6, -b.size[2] * 0.25]} castShadow>
-                <cylinderGeometry args={[0.3, 0.4, 12, 6]} />
-                <meshStandardMaterial color="#94A3B8" metalness={0.9} />
-              </mesh>
-            )}
-          </group>
-        ))}
-
-      {/* Urban Sidewalk Trees */}
-      {features.type === 'urban' &&
-        features.streetTrees?.map((pos, i) => (
-          <group key={`tree-u-${i}`} position={pos}>
-            {/* Tree Trunk */}
-            <mesh position={[0, 4, 0]} castShadow>
-              <cylinderGeometry args={[0.7, 1.0, 8, 8]} />
-              <meshStandardMaterial color="#5C4033" roughness={0.9} />
-            </mesh>
-            {/* Tree Leaf Canopy */}
-            <mesh position={[0, 9.5, 0]} castShadow>
-              <sphereGeometry args={[5, 12, 10]} />
-              <meshStandardMaterial color="#2E6930" roughness={0.8} />
-            </mesh>
-          </group>
-        ))}
-
-      {/* Rural Barns, Silos, Farmhouses */}
-      {features.type === 'rural' &&
-        features.structures?.map((s, i) => (
-          <group key={`struct-${i}`} position={s.pos}>
-            {s.type === 'barn' ? (
-              /* Traditional Red Gambrel Barn */
-              <group position={[0, 9, 0]}>
-                <mesh castShadow receiveShadow>
-                  <boxGeometry args={[32, 18, 22]} />
-                  <meshStandardMaterial color="#991B1B" roughness={0.75} />
-                </mesh>
-                {/* Pitched Roof */}
-                <mesh position={[0, 12, 0]} rotation={[0, 0, Math.PI / 4]} castShadow>
-                  <boxGeometry args={[18, 18, 23]} />
-                  <meshStandardMaterial color="#374151" roughness={0.7} />
-                </mesh>
-              </group>
-            ) : s.type === 'silo' ? (
-              /* Corrugated Grain Silo */
-              <group position={[0, 16, 0]}>
-                <mesh castShadow>
-                  <cylinderGeometry args={[7, 7, 32, 16]} />
-                  <meshStandardMaterial color="#94A3B8" metalness={0.75} roughness={0.3} />
-                </mesh>
-                {/* Conical Dome */}
-                <mesh position={[0, 19, 0]} castShadow>
-                  <coneGeometry args={[7.2, 6, 16]} />
-                  <meshStandardMaterial color="#64748B" metalness={0.8} roughness={0.3} />
-                </mesh>
-              </group>
-            ) : (
-              /* Rural Farmhouse */
-              <group position={[0, 7.5, 0]}>
-                <mesh castShadow receiveShadow>
-                  <boxGeometry args={[24, 15, 18]} />
-                  <meshStandardMaterial color="#F1F5F9" roughness={0.6} />
-                </mesh>
-                {/* Gabled Roof */}
-                <mesh position={[0, 10.5, 0]} rotation={[0, 0, Math.PI / 4]} castShadow>
-                  <boxGeometry args={[14, 14, 19]} />
-                  <meshStandardMaterial color="#1E293B" roughness={0.6} />
-                </mesh>
-              </group>
-            )}
-          </group>
-        ))}
-
-      {/* Rural Natural Trees (Deciduous and Evergreen Pine) */}
-      {features.type === 'rural' &&
-        features.trees?.map((t, i) => (
-          <group key={`rtree-${i}`} position={t.pos} scale={[t.scale, t.scale, t.scale]}>
-            {t.isPine ? (
-              /* Tall Conical Pine Tree */
-              <group>
-                <mesh position={[0, 4, 0]} castShadow>
-                  <cylinderGeometry args={[0.8, 1.2, 8, 8]} />
-                  <meshStandardMaterial color="#4A3728" roughness={0.9} />
-                </mesh>
-                {/* Layered Cones */}
-                <mesh position={[0, 10, 0]} castShadow>
-                  <coneGeometry args={[6.5, 8, 8]} />
-                  <meshStandardMaterial color="#1E3A2F" roughness={0.85} />
-                </mesh>
-                <mesh position={[0, 15, 0]} castShadow>
-                  <coneGeometry args={[5, 7, 8]} />
-                  <meshStandardMaterial color="#234E3F" roughness={0.85} />
-                </mesh>
-                <mesh position={[0, 19, 0]} castShadow>
-                  <coneGeometry args={[3.2, 6, 8]} />
-                  <meshStandardMaterial color="#2D5F4D" roughness={0.85} />
-                </mesh>
-              </group>
-            ) : (
-              /* Broad Deciduous Oak */
-              <group>
-                <mesh position={[0, 5, 0]} castShadow>
-                  <cylinderGeometry args={[1.2, 1.8, 10, 8]} />
-                  <meshStandardMaterial color="#543D2B" roughness={0.9} />
-                </mesh>
-                <mesh position={[0, 12, 0]} castShadow>
-                  <sphereGeometry args={[7.5, 12, 10]} />
-                  <meshStandardMaterial color="#36682B" roughness={0.8} />
-                </mesh>
-                <mesh position={[3, 14, -2]} castShadow>
-                  <sphereGeometry args={[5, 10, 8]} />
-                  <meshStandardMaterial color="#457A36" roughness={0.8} />
-                </mesh>
-              </group>
-            )}
-          </group>
-        ))}
-
-      {/* Coastal Rocky Outcrops & Boulders */}
-      {features.type === 'coastal' &&
-        features.coastalRocks?.map((r, i) => (
-          <mesh key={`crock-${i}`} position={r.pos} castShadow receiveShadow>
-            <dodecahedronGeometry args={[r.size[0] / 2, 1]} />
-            <meshStandardMaterial color="#57534E" roughness={0.95} metalness={0.1} />
+      <group position={[0, -0.3, 0]}>
+        {[
+          { r: 1000 * scaleFactor, label: '1km' },
+          { r: 2000 * scaleFactor, label: '2km' },
+          { r: 3000 * scaleFactor, label: '3km' },
+          { r: 4000 * scaleFactor, label: '4km' },
+        ].map(({ r }, idx) => (
+          <mesh key={`range-ring-${idx}`} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[r - 0.6, r + 0.6, 64]} />
+            <meshBasicMaterial color="#00E5FF" opacity={0.22} transparent side={THREE.DoubleSide} />
           </mesh>
         ))}
-
-      {/* Border Outpost Watchtowers */}
-      {features.type === 'border' &&
-        features.watchtowers?.map((pos, i) => (
-          <group key={`tower-${i}`} position={pos}>
-            {/* 4 Steel Support Legs */}
-            {[-4, 4].map((lx) =>
-              [-4, 4].map((lz) => (
-                <mesh key={`${lx}-${lz}`} position={[lx, 14, lz]} castShadow>
-                  <cylinderGeometry args={[0.4, 0.4, 28, 6]} />
-                  <meshStandardMaterial color="#44403C" metalness={0.8} />
-                </mesh>
-              ))
-            )}
-            {/* Observation Cabin */}
-            <mesh position={[0, 28, 0]} castShadow receiveShadow>
-              <boxGeometry args={[12, 6, 12]} />
-              <meshStandardMaterial color="#57534E" roughness={0.6} />
-            </mesh>
-            {/* Glass windows */}
-            <mesh position={[0, 28, 0]}>
-              <boxGeometry args={[12.2, 2.5, 12.2]} />
-              <meshStandardMaterial color="#0284C7" opacity={0.7} transparent roughness={0.1} />
-            </mesh>
-            {/* Pyramid Roof */}
-            <mesh position={[0, 33, 0]} rotation={[0, Math.PI / 4, 0]} castShadow>
-              <coneGeometry args={[9, 4, 4]} />
-              <meshStandardMaterial color="#292524" />
-            </mesh>
-          </group>
-        ))}
-
-      {/* Border Rolling Rocky Hills */}
-      {features.type === 'border' &&
-        features.hills?.map((h, i) => (
-          <mesh key={`hill-${i}`} position={h.pos} castShadow receiveShadow>
-            <dodecahedronGeometry args={[h.size[0] / 2, 1]} />
-            <meshStandardMaterial color="#78593A" roughness={0.95} />
-          </mesh>
-        ))}
-
-      {/* ========================================================================= */}
-      {/* 3. CENTRAL GARUDA TACTICAL COMMAND NODE (HQ RADAR & SATELLITE BASE)       */}
-      {/* ========================================================================= */}
-      <group position={[0, 0, 0]}>
-        {/* Reinforced Command Bunker Platform */}
-        <mesh position={[0, 2, 0]} castShadow receiveShadow>
-          <cylinderGeometry args={[16, 20, 4, 16]} />
-          <meshStandardMaterial color="#334155" roughness={0.7} metalness={0.4} />
-        </mesh>
-
-        {/* Outer Perimeter Walkway Curb */}
-        <mesh position={[0, 4.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[14, 16, 32]} />
-          <meshStandardMaterial color="#1E293B" roughness={0.6} />
-        </mesh>
-
-        {/* Phased Array Radar Geodesic Dome */}
-        <mesh position={[0, 8.5, 0]} castShadow>
-          <sphereGeometry args={[7.5, 24, 20, 0, Math.PI * 2, 0, Math.PI / 2]} />
-          <meshStandardMaterial
-            color="#F1F5F9"
-            roughness={0.3}
-            metalness={0.2}
-          />
-        </mesh>
-
-        {/* Tactical Mast & Antenna Array */}
-        <mesh position={[0, 22, 0]} castShadow>
-          <cylinderGeometry args={[0.5, 0.7, 24, 8]} />
-          <meshStandardMaterial color="#94A3B8" metalness={0.9} />
-        </mesh>
-        {/* Radar Crossbars */}
-        <mesh position={[0, 28, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.3, 0.3, 10, 8]} />
-          <meshStandardMaterial color="#CBD5E1" metalness={0.9} />
-        </mesh>
-        {/* Central Beacon Status Light (GARUDA Accent) */}
-        <mesh position={[0, 34, 0]}>
-          <sphereGeometry args={[0.9, 12, 12]} />
-          <meshBasicMaterial color="#00E5FF" />
-        </mesh>
       </group>
-
-      {/* ========================================================================= */}
-      {/* 4. RESTRAINED TACTICAL OVERLAYS (RANGE RINGS & PERIMETER)                 */}
-      {/* ========================================================================= */}
-      {/* Subtle Concentric Range Rings (1km, 2km, 3km, 4km) */}
-      {rings.map((r, idx) => (
-        <mesh key={`ring-${idx}`} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.15, 0]}>
-          <ringGeometry args={[r - 0.7, r + 0.7, 96]} />
-          <meshBasicMaterial color="#00E5FF" opacity={0.16} transparent side={THREE.DoubleSide} />
-        </mesh>
-      ))}
-
-      {/* 1.8km Inner Defense Perimeter Ring (Restrained warning boundary) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.2, 0]}>
-        <ringGeometry args={[perimeterRadius - 1.2, perimeterRadius + 1.2, 96]} />
-        <meshBasicMaterial color="#00E5FF" opacity={0.38} transparent side={THREE.DoubleSide} />
-      </mesh>
     </group>
   );
 };

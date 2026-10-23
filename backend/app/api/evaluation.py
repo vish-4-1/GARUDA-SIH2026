@@ -41,39 +41,78 @@ def get_after_action_review(run_id: str, db: Session = Depends(get_db)):
 
     # Evaluate score if needed
     score_data = EvidenceAwareScoringEngine.evaluate_run(db, run_id)
-    recommendations = db.query(TrainingRecommendation).filter(TrainingRecommendation.run_id == run_id).all()
-    if not recommendations:
-        recommendations = AdaptiveRecommendationEngine.generate_recommendations(db, run_id)
-
-    # Derive strengths & weaknesses from metrics
-    summary = run.summary_metrics or {}
-    strengths = []
-    weaknesses = []
-
-    if summary.get("detection_rate", 0) >= 80:
-        strengths.append(f"Strong perimeter surveillance: {summary.get('detection_rate')}% of observable hostile drones detected.")
-    else:
-        weaknesses.append(f"Missed {round(100 - summary.get('detection_rate', 0), 1)}% of observable hostile drone incursions.")
-
-    if summary.get("classification_accuracy", 0) >= 80:
-        strengths.append(f"High classification accuracy: {summary.get('classification_accuracy')}% on assessable targets.")
-    else:
-        weaknesses.append("Classification error on incoming contacts; review radar cross section and acoustic profiles.")
-
-    if summary.get("false_alarm_rate", 0) == 0:
-        strengths.append("Zero false alarms: No civilian drones or wildlife clutter targeted.")
-    elif summary.get("false_alarm_rate", 0) > 15:
-        weaknesses.append(f"Excessive false alarm rate ({summary.get('false_alarm_rate')}%); verify Remote-ID beacons.")
-
-    if summary.get("evidence_awareness_score", 0) >= 85:
-        strengths.append("High degraded-information discipline: Exercised proper verification under packet loss.")
-    else:
-        weaknesses.append("Acted prematurely on unobservable or zero-evidence contacts; risk of collateral error.")
+    recommendations = AdaptiveRecommendationEngine.generate_recommendations(db, run_id)
 
     gt_count = db.query(GroundTruthEvent).filter(GroundTruthEvent.run_id == run_id).count()
     delivered_count = db.query(Observation).filter(Observation.run_id == run_id, Observation.is_lost == False).count()
     lost_count = db.query(Observation).filter(Observation.run_id == run_id, Observation.is_lost == True).count()
     dec_count = db.query(TraineeDecision).filter(TraineeDecision.run_id == run_id).count()
+
+    summary = run.summary_metrics or {}
+    evaluation_status = score_data.get("evaluation_status", "EVALUATED")
+    strengths = []
+    weaknesses = []
+
+    if dec_count == 0:
+        evaluation_status = "PENDING_DECISIONS"
+        strengths.append("No operational engagements logged. Active simulation participation is required to evaluate tactical strengths.")
+        weaknesses.append(
+            f"Unengaged Threat Airspace: 0 trainee decisions logged across {gt_count} simulation events "
+            f"({delivered_count} delivered to trainee radar/sensors, {lost_count} lost/jammed). "
+            f"Hostile contacts remained unengaged."
+        )
+    else:
+        # Metrics from score_data
+        metrics_list = score_data.get("metrics", [])
+        det_metric = next((m for m in metrics_list if getattr(m, "metric_category", None) == "DETECTION"), None)
+        class_metric = next((m for m in metrics_list if getattr(m, "metric_category", None) == "CLASSIFICATION"), None)
+        time_metric = next((m for m in metrics_list if getattr(m, "metric_category", None) == "TIMELINESS"), None)
+        fa_rate = summary.get("false_alarm_rate", 0)
+        blind_guesses = summary.get("unassessable_count", 0)
+
+        # 1. Detection
+        if det_metric:
+            num = int(det_metric.numerator)
+            den = int(det_metric.denominator)
+            if den > 0:
+                if num == den:
+                    strengths.append(f"Perimeter Defense: Detected 100% ({num}/{den}) of observable hostile incursions (jammed/lost contacts excluded per protocol).")
+                elif det_metric.score_value >= 80.0:
+                    strengths.append(f"Perimeter Surveillance: Detected {det_metric.score_value}% ({num}/{den}) of observable hostile incursions.")
+                else:
+                    missed = den - num
+                    weaknesses.append(f"Observable Threat Gaps: {missed} of {den} observable hostile drone(s) breached perimeter without engagement.")
+
+        # 2. Classification
+        if class_metric:
+            num = int(class_metric.numerator)
+            den = int(class_metric.denominator)
+            if den > 0:
+                if class_metric.score_value >= 80.0:
+                    strengths.append(f"Classification Precision: Accurately identified {class_metric.score_value}% ({num}/{den}) of assessable contacts from delivered evidence.")
+                else:
+                    errors = den - num
+                    weaknesses.append(f"Classification Inaccuracies: {errors} of {den} assessable target(s) misclassified. Cross-reference radar cross-section (RCS) and acoustic profiles.")
+
+        # 3. False Alarms
+        if fa_rate == 0:
+            strengths.append("Zero False Alarms: Exercised positive target identification without targeting civilian drones or environmental clutter.")
+        elif fa_rate > 10.0:
+            weaknesses.append(f"False Alarm Discrepancies ({fa_rate}%): Non-hostile contacts or clutter were assessed or engaged as hostile threats. Verify Remote-ID beacons.")
+
+        # 4. Evidence Discipline
+        if blind_guesses == 0:
+            strengths.append("Evidence Discipline: 100% of decisions were corroborated by delivered sensor evidence; zero blind guesses during sensor latency.")
+        else:
+            weaknesses.append(f"Premature Actions: Enacted {blind_guesses} decision(s) without prior delivered sensor evidence. Request sensor ping under jamming instead of guessing.")
+
+        # 5. Timeliness
+        if time_metric and time_metric.numerator > 0:
+            latency_val = time_metric.numerator
+            if latency_val <= 4.0:
+                strengths.append(f"Rapid Response: Average engagement latency of {latency_val}s from observation delivery.")
+            elif latency_val > 8.0:
+                weaknesses.append(f"Tactical Hesitation: Average engagement response time of {latency_val}s exceeds the 4.0s target threshold.")
 
     scenario_name = run.scenario.name if run.scenario else "Custom Seeded Run"
     difficulty = run.scenario.difficulty if run.scenario else "Intermediate"
@@ -91,6 +130,7 @@ def get_after_action_review(run_id: str, db: Session = Depends(get_db)):
         "duration_seconds": run.duration_seconds,
         "current_sim_time": run.current_sim_time,
         "overall_score": score_data["overall_score"],
+        "evaluation_status": evaluation_status,
         "score_breakdown": score_data,
         "recommendations": recommendations,
         "timeline_summary": {

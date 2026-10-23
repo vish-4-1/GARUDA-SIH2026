@@ -1,9 +1,8 @@
 # GARUDA — System Architecture & Technical Specifications
 
-**Project Name:** GARUDA (Generative AI for Realistic Unmanned-threat Detection and Assessment)  
-**Problem Statement ID:** SIH26247  
-**Team:** DareDevils  
-**Domain:** Robotics and Drones  
+**Platform:** GARUDA Autonomous Counter-UAS Simulation Rig  
+**Architecture Specification:** Version 1.0 Enterprise  
+**Domain:** Tactical Unmanned-Threat Simulation & Evaluation  
 
 ---
 

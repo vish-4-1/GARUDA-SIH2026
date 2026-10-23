@@ -44,3 +44,6 @@ yarn-error.log*
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Scratch & Temporary Audit Scripts
+scratch/

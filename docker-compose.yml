@@ -1,49 +1,55 @@
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: garuda-postgres
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-garuda}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-garudapass}
-      POSTGRES_DB: ${POSTGRES_DB:-garudadb}
-    ports:
-      - "5432:5432"
-    volumes:
-      - garuda_pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U garuda -d garudadb"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: garuda-backend
-    restart: always
+    restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-garuda}:${POSTGRES_PASSWORD:-garudapass}@db:5432/${POSTGRES_DB:-garudadb}
-      ENVIRONMENT: production
-      DEBUG: "false"
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/garuda.db}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-false}
+      CORS_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173","*"]'
     ports:
       - "8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
+    volumes:
+      - garuda_data:/app/data
+      - ./backend/app:/app/app
+      - ./backend/tests:/app/tests
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    networks:
+      - garuda-net
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: garuda-frontend
-    restart: always
+    restart: unless-stopped
     ports:
       - "3000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:80/ || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - garuda-net
+
+networks:
+  garuda-net:
+    driver: bridge
 
 volumes:
-  garuda_pg_data:
+  garuda_data:
+    driver: local
